@@ -1,5 +1,6 @@
 mod app;
 mod constants;
+mod style;
 
 pub fn run_app() -> eframe::Result<()> {
     eframe::run_native(

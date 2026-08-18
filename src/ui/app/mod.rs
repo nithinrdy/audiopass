@@ -1,7 +1,6 @@
 use eframe::egui;
 
-mod layout;
-use layout::sidebar;
+mod components;
 mod screens;
 use screens::MainScreen;
 
@@ -27,6 +26,8 @@ impl App {
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        ui.visuals_mut().panel_fill = crate::ui::style::BACKGROUND;
+
         if !self.startup_complete {
             egui::CentralPanel::default().show(ui, |ui| {
                 screens::startup::show(self, ui);
@@ -35,7 +36,7 @@ impl eframe::App for App {
             egui::Panel::left("sidebar")
                 .exact_size(200.0)
                 .resizable(false)
-                .show(ui, |ui| sidebar::show(self, ui));
+                .show(ui, |ui| components::sidebar::show(self, ui));
 
             egui::CentralPanel::default_margins().show(ui, |ui| {
                 // so rustfmt doesnt inline this part
