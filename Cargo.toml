@@ -1,0 +1,20 @@
+[package]
+name = "audiopass"
+version = "0.1.0"
+description = "AudioPass is a Linux desktop app that plays local audio files through a virtual microphone."
+authors = ["Vishnu Nithin Reddy"]
+edition = "2024"
+
+
+
+[profile.dev]
+incremental = true
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = "symbols" 
+
+[dependencies]
