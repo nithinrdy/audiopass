@@ -18,3 +18,4 @@ panic = "abort"
 strip = "symbols" 
 
 [dependencies]
+eframe = { version = "0.36.1" }
