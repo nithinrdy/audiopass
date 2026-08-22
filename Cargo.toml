@@ -19,3 +19,4 @@ strip = "symbols"
 
 [dependencies]
 eframe = { version = "0.36.1" }
+pipewire = { version = "0.10.1" }

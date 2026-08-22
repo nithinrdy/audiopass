@@ -1,12 +1,77 @@
-use crate::{ui, ui::app::MainScreen};
-use eframe::egui;
+use crate::ui::{self, app::components::button, style};
+use eframe::egui::{self, RichText, Stroke};
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
-    ui.heading("AudioPass");
-    ui.label("Startup Screen");
+    let sources = app.valid_sources.clone();
+    let no_sources_available = sources.len() < 1;
 
-    if ui.button("Continue").clicked() {
-        app.startup_complete = true;
-        app.active_screen = Some(MainScreen::Console);
-    }
+    ui.vertical_centered_justified(|ui| {
+        ui.set_width(400.0);
+        ui.add_space(8.0);
+        ui.label(RichText::new("AudioPass").color(style::ACCENT).size(32.0).extra_letter_spacing(2.0).strong());
+
+        ui.add_space(40.0);
+        if no_sources_available {
+            ui.label(
+                RichText::new("No physical mics or input sources detected. To proceed, please connect a physical input source and ensure Pipewire can detect it.")
+                    .size(16.0)
+                    .color(style::WARNING),
+            );
+            ui.add_space(20.0);
+
+            return;
+        }
+
+        ui.label(RichText::new("To continue, please select a physical mic from the list below.").size(16.0).color(style::SECONDARY_TEXT));
+        app.selected_mic_id.get_or_insert(sources[0].id);
+
+        let mut allow_continue = false;
+
+        ui.add_space(20.0);
+        ui.horizontal(|ui| {
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                let selected_mic = sources.iter().find(|s| Some(s.id) == app.selected_mic_id);
+                let selected_mic_label = match selected_mic {
+                    Some(m) => {
+                        allow_continue = true;
+                        m.description.clone()
+                    }
+                    _ => {
+                        allow_continue = false;
+                        "-".to_string()
+                    }
+                };
+                ui.scope(|ui| {
+                    ui.spacing_mut().interact_size.y = 40.0;
+                    ui.spacing_mut().button_padding.x = 12.0;
+                    ui.visuals_mut().widgets.inactive.bg_stroke = Stroke::new(1.0, style::SECONDARY_TEXT);
+                    ui.visuals_mut().widgets.hovered.weak_bg_fill = style::SECONDARY_BACKGROUND;
+
+                    egui::ComboBox::from_id_salt("startup_source")
+                        .selected_text(RichText::new(selected_mic_label).size(16.0))
+                        .width(ui.available_width())
+                        .truncate()
+                        .show_ui(ui, |ui| {
+                            ui.spacing_mut().interact_size.y = 40.0;
+                            ui.spacing_mut().button_padding.x = 12.0;
+                            ui.visuals_mut().selection.bg_fill = style::SECONDARY_BACKGROUND;
+                            ui.visuals_mut().selection.stroke = Stroke::new(1.0, style::PRIMARY_TEXT);
+                            ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::new(1.0, style::ACCENT);
+
+                            for s in sources {
+                                ui.selectable_value(&mut app.selected_mic_id, Some(s.id), RichText::new(&s.description).size(16.0));
+                            }
+                        });
+                });
+            });
+        });
+
+        ui.add_space(10.0);
+        ui.add_enabled_ui(allow_continue, |ui| {
+            let continued = button::show(app, ui, "Continue", button::ButtonVariant::Primary).inner;
+            if continued {
+                app.pipewire_instance.create_virtual_mic()
+            }
+        });
+    });
 }
