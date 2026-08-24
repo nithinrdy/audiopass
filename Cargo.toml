@@ -19,4 +19,4 @@ strip = "symbols"
 
 [dependencies]
 eframe = { version = "0.36.1" }
-pipewire = { version = "0.10.1" }
+pipewire = { version = "0.10.1", features = ["v0_3_44"] } # 0_3_44 lets me use pipewire::keys::TARGET_OBJECT to create stream targeting physical mic (or any node I guess)

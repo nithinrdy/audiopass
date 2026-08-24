@@ -3,18 +3,22 @@ use std::sync::{Once, mpsc::Sender};
 use eframe::egui::Context;
 
 pub use crate::backend::pipewire::worker::PipewireSource;
+mod utils;
 mod virtual_mic;
+mod virtual_sink;
 mod worker;
 
 static PIPEWIRE_INIT: Once = Once::new();
 
 pub enum PipewireCommand {
     CreateVirtualMic,
+    CreateVirtualSink { selected_node_name: String },
     Shutdown,
 }
 pub enum PipewireEvent {
     PipewireError { error: String },
     VirtualMicReady { state: Result<(), String> },
+    VirtualSinkReady { state: Result<(), String> },
     Sources { sources: Vec<PipewireSource> },
 }
 
@@ -74,6 +78,10 @@ pub fn start_pipewire_worker(cloned_egui_context: Context) -> Result<PipewireHoo
 impl PipewireHook {
     pub fn create_virtual_mic(&mut self) {
         let _ = self.command_sender.send(PipewireCommand::CreateVirtualMic);
+    }
+
+    pub fn create_virtual_sink(&mut self, selected_node_name: String) {
+        let _ = self.command_sender.send(PipewireCommand::CreateVirtualSink { selected_node_name });
     }
 
     pub fn shutdown(&mut self) {

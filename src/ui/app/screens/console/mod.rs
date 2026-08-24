@@ -32,7 +32,9 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                         ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::new(1.0, style::ACCENT);
 
                         for s in sources {
-                            ui.selectable_value(&mut app.selected_mic_id, Some(s.id), RichText::new(&s.description).size(16.0));
+                            if ui.selectable_value(&mut app.selected_mic_id, Some(s.id), RichText::new(&s.description).size(16.0)).changed() {
+                                app.pipewire_instance.create_virtual_sink(s.node_name.clone());
+                            }
                         }
                     });
             });

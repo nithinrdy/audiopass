@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::backend::constants;
 use crate::backend::pipewire::virtual_mic::VirtualMic;
+use crate::backend::pipewire::virtual_sink::VirtualSink;
 use crate::backend::pipewire::{CustomEventSender, PipewireCommand, PipewireEvent};
 use pipewire::context::ContextRc;
 use pipewire::core::CoreRc;
@@ -29,6 +30,7 @@ struct PipewireWorker {
     mainloop: MainLoopRc,
     core: CoreRc,
     virtual_mic: Option<VirtualMic>,
+    virtual_sink: Option<VirtualSink>,
     event_sender: CustomEventSender,
     registry_data: PipewireRegistryData,
 }
@@ -62,6 +64,7 @@ impl PipewireWorkerWrapper {
                     mainloop,
                     core,
                     virtual_mic: None,
+                    virtual_sink: None,
                     event_sender,
                     registry_data: PipewireRegistryData::default(),
                 }
@@ -131,6 +134,12 @@ impl PipewireWorker {
         match cmd {
             PipewireCommand::CreateVirtualMic => {
                 self.virtual_mic = Some(VirtualMic::new(self.core.clone(), event_sender.clone())?);
+            }
+            PipewireCommand::CreateVirtualSink { selected_node_name } => {
+                if let Some(sink) = self.virtual_sink.take() {
+                    drop(sink)
+                }
+                self.virtual_sink = Some(VirtualSink::new(self.core.clone(), selected_node_name, event_sender.clone())?);
             }
             _ => unreachable!(),
         }

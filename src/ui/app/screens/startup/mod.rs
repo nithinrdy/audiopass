@@ -22,8 +22,12 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
             return;
         }
 
-        ui.label(RichText::new("To continue, please select a physical mic from the list below.").size(16.0).color(style::SECONDARY_TEXT));
-        app.selected_mic_id.get_or_insert(sources[0].id);
+        ui.label(
+            RichText::new("To continue, please select a physical mic from the list below.")
+                .size(16.0)
+                .extra_letter_spacing(-0.5)
+                .color(style::SECONDARY_TEXT),
+        );
 
         let mut allow_continue = false;
 
@@ -59,7 +63,9 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                             ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::new(1.0, style::ACCENT);
 
                             for s in sources {
-                                ui.selectable_value(&mut app.selected_mic_id, Some(s.id), RichText::new(&s.description).size(16.0));
+                                if ui.selectable_value(&mut app.selected_mic_id, Some(s.id), RichText::new(&s.description).size(16.0)).changed() {
+                                    app.pipewire_instance.create_virtual_sink(s.node_name);
+                                };
                             }
                         });
                 });

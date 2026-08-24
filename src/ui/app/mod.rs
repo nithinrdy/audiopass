@@ -46,7 +46,18 @@ impl App {
             };
 
             match event {
-                PipewireEvent::Sources { sources } => self.valid_sources = sources.into_iter().filter(|s| !s.is_audiopass_mic).collect(),
+                PipewireEvent::Sources { sources } => {
+                    self.valid_sources = sources.into_iter().filter(|s| !s.is_audiopass_mic).collect();
+                    if self.selected_mic_id.is_some() && self.valid_sources.iter().find(|s| s.id == self.selected_mic_id.unwrap()).is_none() {
+                        self.selected_mic_id = None; // clear selected mic id if not in list of sources
+                    }
+                }
+
+                PipewireEvent::VirtualSinkReady { state: Ok(()) } => {}
+
+                PipewireEvent::VirtualSinkReady { state: Err(err) } => {
+                    self.critical_error = Some(format!("Failed to create virtual sink to capture the physical mic: {err}"));
+                }
 
                 PipewireEvent::VirtualMicReady { state: Ok(()) } => {
                     self.startup_complete = true;
