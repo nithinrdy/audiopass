@@ -1,4 +1,4 @@
-use std::sync::mpsc::TryRecvError;
+use std::{path::PathBuf, sync::mpsc::TryRecvError};
 
 use eframe::egui;
 
@@ -18,6 +18,7 @@ pub struct App {
     pipewire_instance: PipewireHook,
     critical_error: Option<String>,
     valid_sources: Vec<PipewireSource>,
+    track_list: Vec<std::path::PathBuf>,
 }
 
 impl App {
@@ -29,6 +30,10 @@ impl App {
             pipewire_instance: pw_instance,
             critical_error: None,
             valid_sources: Vec::new(),
+            track_list: Vec::from([
+                PathBuf::from("/home/nithinrdy/Music/The Cyber Grind.flac"),
+                PathBuf::from("/home/nithinrdy/Music/Lipps Inc. - Funkytown.mp3"),
+            ]),
         }
     }
 }
