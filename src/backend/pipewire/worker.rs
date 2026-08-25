@@ -1,14 +1,16 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::backend::constants;
-use crate::backend::pipewire::virtual_mic::VirtualMic;
-use crate::backend::pipewire::virtual_sink::VirtualSink;
-use crate::backend::pipewire::{CustomEventSender, PipewireCommand, PipewireEvent};
 use pipewire::context::ContextRc;
 use pipewire::core::CoreRc;
 use pipewire::main_loop::MainLoopRc;
 use pipewire::types::ObjectType;
+use ringbuf::{Arc, CachingCons, CachingProd, HeapRb, traits::Consumer};
+
+use crate::backend::constants;
+use crate::backend::pipewire::virtual_mic::VirtualMic;
+use crate::backend::pipewire::virtual_sink::VirtualSink;
+use crate::backend::pipewire::{CustomEventSender, PipewireCommand, PipewireEvent};
 
 #[derive(Clone, Debug)]
 pub struct PipewireSource {
@@ -33,6 +35,7 @@ struct PipewireWorker {
     virtual_sink: Option<VirtualSink>,
     event_sender: CustomEventSender,
     registry_data: PipewireRegistryData,
+    audio_ring: Arc<HeapRb<u8>>,
 }
 
 impl PipewireWorkerWrapper {
@@ -67,6 +70,7 @@ impl PipewireWorkerWrapper {
                     virtual_sink: None,
                     event_sender,
                     registry_data: PipewireRegistryData::default(),
+                    audio_ring: Arc::new(HeapRb::new(constants::AUDIOPASS_MIC_RING_CAPACITY_BYTES)),
                 }
             })),
         })
@@ -133,13 +137,19 @@ impl PipewireWorker {
     fn handle_command(&mut self, cmd: PipewireCommand, event_sender: CustomEventSender) -> Result<(), String> {
         match cmd {
             PipewireCommand::CreateVirtualMic => {
-                self.virtual_mic = Some(VirtualMic::new(self.core.clone(), event_sender.clone())?);
+                if self.virtual_mic.is_some() {
+                    return Err(format!("You're trying to create a virtual mic after one has already been created, something's gone terribly wrong."));
+                }
+
+                let persistent_audio_consumer = CachingCons::new(self.audio_ring.clone());
+                self.virtual_mic = Some(VirtualMic::new(self.core.clone(), event_sender.clone(), persistent_audio_consumer)?);
             }
             PipewireCommand::CreateVirtualSink { selected_node_name } => {
                 if let Some(sink) = self.virtual_sink.take() {
-                    drop(sink)
+                    drop(sink) // also drops the associated CachingProd instance tied to this sink, so ::new() in the next line won't panic
                 }
-                self.virtual_sink = Some(VirtualSink::new(self.core.clone(), selected_node_name, event_sender.clone())?);
+                let audio_producer_for_this_mic = CachingProd::new(self.audio_ring.clone());
+                self.virtual_sink = Some(VirtualSink::new(self.core.clone(), selected_node_name, event_sender.clone(), audio_producer_for_this_mic)?);
             }
             _ => unreachable!(),
         }

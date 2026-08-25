@@ -1,12 +1,13 @@
-use std::io::Cursor;
 use pipewire::spa::{
     self,
     param::audio::{AudioFormat, AudioInfoRaw},
     pod::serialize::PodSerializer,
 };
+use std::io::Cursor;
 
 use crate::backend::constants;
 
+// https://sources.debian.org/src/rust-pipewire/0.9.2-2/examples/audio-capture.rs/#L162 I honestly do not understand the serialize part.
 pub fn get_serialized_vec_for_pod() -> Result<Vec<u8>, String> {
     let mut audio_info = AudioInfoRaw::default();
     audio_info.set_format(AudioFormat::F32LE);

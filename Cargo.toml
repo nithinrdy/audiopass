@@ -19,4 +19,7 @@ strip = "symbols"
 
 [dependencies]
 eframe = { version = "0.36.1" }
-pipewire = { version = "0.10.1", features = ["v0_3_44"] } # 0_3_44 lets me use pipewire::keys::TARGET_OBJECT to create stream targeting physical mic (or any node I guess)
+# 0_3_49 lets me use buffer.requested() for frame count pipewire recommends when writing to source stream (src/backend/pipewire/virtual_mic.rs)
+# (and >=0_3_44 lets me use pipewire::keys::TARGET_OBJECT to create stream targeting physical mic (or any node I guess))
+pipewire = { version = "0.10.1", features = ["v0_3_49"] }
+ringbuf = { version = "0.5.1"}

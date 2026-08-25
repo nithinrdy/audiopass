@@ -1,13 +1,15 @@
 use pipewire::spa::{pod::Pod, utils::Direction};
+use ringbuf::{HeapProd, traits::Producer};
+use std::ops::Deref;
 
 use crate::backend::{
     constants,
     pipewire::{CustomEventSender, PipewireEvent, utils::get_serialized_vec_for_pod},
 };
-use std::ops::Deref;
 
 struct AdditionalData {
     sender: CustomEventSender,
+    audio_producer: HeapProd<u8>,
 }
 
 pub struct VirtualSink {
@@ -16,7 +18,7 @@ pub struct VirtualSink {
 }
 
 impl VirtualSink {
-    pub fn new(pw_core: pipewire::core::CoreRc, selected_node_name: String, state_change_sender: CustomEventSender) -> Result<Self, String> {
+    pub fn new(pw_core: pipewire::core::CoreRc, selected_node_name: String, state_change_sender: CustomEventSender, audio_producer: HeapProd<u8>) -> Result<Self, String> {
         // https://docs.pipewire.org/group__pw__stream.html#ga712ca485dc634252d144556074980f0a
         let stream = pipewire::stream::StreamRc::new(
             pw_core,
@@ -37,7 +39,10 @@ impl VirtualSink {
         };
 
         let listener = stream
-            .add_local_listener_with_user_data(AdditionalData { sender: state_change_sender })
+            .add_local_listener_with_user_data(AdditionalData {
+                sender: state_change_sender,
+                audio_producer,
+            })
             .state_changed(|_stream, data, _old_state, new_state| {
                 // so rustfmt doesnt inline this
                 match new_state {
@@ -54,7 +59,40 @@ impl VirtualSink {
                 }
             })
             .process(|stream, data| {
-                // todo
+                // similar to source stream but valid region is marked by pipewire, read by me (opposite of me marking, pipewire reading)
+                let mut buffer = match stream.dequeue_buffer() {
+                    Some(b) => b,
+                    None => return,
+                };
+                let datas = buffer.datas_mut();
+                if datas.is_empty() {
+                    return;
+                }
+                let buffer_data = &mut datas[0];
+
+                // valid audio may not start and end exactly at beginning and end of the bytes array https://docs.pipewire.org/structspa__chunk.html
+                let size = buffer_data.chunk().size() as usize;
+                let start = buffer_data.chunk().offset() as usize;
+
+                let bytes_in_buffer = match buffer_data.data() {
+                    Some(b) => {
+                        if b.is_empty() {
+                            return;
+                        } else {
+                            b
+                        }
+                    }
+                    None => return,
+                };
+
+                let start = start % bytes_in_buffer.len(); // % sample_bytes.len() because https://docs.pipewire.org/structspa__chunk.html#ae7a889b81a5d56ff5babd521b5ce7cb7
+                let end = (start + size).min(bytes_in_buffer.len()); // ignoring any bytes that wrap around past end, TODO later: don't?
+                if start >= end {
+                    return;
+                }
+
+                let slice_length_adjusted_for_whole_frames_only = (end - start) - ((end - start) % constants::AUDIOPASS_AUDIO_FRAME_SIZE_BYTES);
+                data.audio_producer.push_slice(&bytes_in_buffer[start..start + slice_length_adjusted_for_whole_frames_only]);
             })
             .register();
 
