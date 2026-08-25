@@ -2,7 +2,13 @@
 
 use pipewire::spa::{pod::Pod, utils::Direction};
 use ringbuf::{HeapCons, traits::Consumer};
-use std::ops::Deref;
+use std::{
+    ops::Deref,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 use crate::backend::{
     constants,
@@ -12,6 +18,7 @@ use crate::backend::{
 struct AdditionalData {
     sender: CustomEventSender,
     audio_consumer: HeapCons<u8>,
+    clear_stale_ring_bytes: Arc<AtomicBool>,
 }
 
 pub struct VirtualMic {
@@ -20,7 +27,7 @@ pub struct VirtualMic {
 }
 
 impl VirtualMic {
-    pub fn new(pw_core: pipewire::core::CoreRc, state_change_sender: CustomEventSender, audio_consumer: HeapCons<u8>) -> Result<Self, String> {
+    pub fn new(pw_core: pipewire::core::CoreRc, state_change_sender: CustomEventSender, audio_consumer: HeapCons<u8>, clear_stale_ring_bytes: Arc<AtomicBool>) -> Result<Self, String> {
         // https://docs.pipewire.org/group__pw__stream.html#ga712ca485dc634252d144556074980f0a
         let stream = pipewire::stream::StreamRc::new(
             pw_core,
@@ -45,6 +52,7 @@ impl VirtualMic {
             .add_local_listener_with_user_data(AdditionalData {
                 sender: state_change_sender,
                 audio_consumer,
+                clear_stale_ring_bytes,
             })
             .state_changed(|_stream, data, _old_state, new_state| {
                 // so rustfmt doesnt inline this
@@ -62,6 +70,9 @@ impl VirtualMic {
                 }
             })
             .process(|stream, data| {
+                if data.clear_stale_ring_bytes.swap(false, Ordering::Acquire) {
+                    data.audio_consumer.clear();
+                }
                 // mostly this on_process() example: https://docs.pipewire.org/audio-src_8c-example.html
                 // buffer, data_in_buffer, data_in_buffer.data() stucture: https://docs.pipewire.org/page_spa_buffer.html
                 let Some(mut buffer) = stream.dequeue_buffer() else {

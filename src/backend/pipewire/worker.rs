@@ -1,11 +1,13 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use pipewire::context::ContextRc;
 use pipewire::core::CoreRc;
 use pipewire::main_loop::MainLoopRc;
 use pipewire::types::ObjectType;
-use ringbuf::{Arc, CachingCons, CachingProd, HeapRb, traits::Consumer};
+use ringbuf::{CachingCons, CachingProd, HeapRb};
 
 use crate::backend::constants;
 use crate::backend::pipewire::virtual_mic::VirtualMic;
@@ -36,6 +38,7 @@ struct PipewireWorker {
     event_sender: CustomEventSender,
     registry_data: PipewireRegistryData,
     audio_ring: Arc<HeapRb<u8>>,
+    clear_stale_ring_bytes: Arc<AtomicBool>, // 100ms of stale audio is no big deal, just an excuse to try out atomics
 }
 
 impl PipewireWorkerWrapper {
@@ -71,6 +74,7 @@ impl PipewireWorkerWrapper {
                     event_sender,
                     registry_data: PipewireRegistryData::default(),
                     audio_ring: Arc::new(HeapRb::new(constants::AUDIOPASS_MIC_RING_CAPACITY_BYTES)),
+                    clear_stale_ring_bytes: Arc::new(AtomicBool::new(false)),
                 }
             })),
         })
@@ -146,14 +150,25 @@ impl PipewireWorker {
                 }
 
                 let persistent_audio_consumer = CachingCons::new(self.audio_ring.clone());
-                self.virtual_mic = Some(VirtualMic::new(self.core.clone(), event_sender.clone(), persistent_audio_consumer)?);
+                self.virtual_mic = Some(VirtualMic::new(
+                    self.core.clone(),
+                    event_sender.clone(),
+                    persistent_audio_consumer,
+                    self.clear_stale_ring_bytes.clone(),
+                )?);
             }
             PipewireCommand::CreateVirtualSink { selected_node_name } => {
                 if let Some(sink) = self.virtual_sink.take() {
                     drop(sink) // also drops the associated CachingProd instance tied to this sink, so ::new() in the next line won't panic
                 }
                 let audio_producer_for_this_mic = CachingProd::new(self.audio_ring.clone());
-                self.virtual_sink = Some(VirtualSink::new(self.core.clone(), selected_node_name, event_sender.clone(), audio_producer_for_this_mic)?);
+                self.virtual_sink = Some(VirtualSink::new(
+                    self.core.clone(),
+                    selected_node_name,
+                    event_sender.clone(),
+                    audio_producer_for_this_mic,
+                    self.clear_stale_ring_bytes.clone(),
+                )?);
             }
             _ => unreachable!(),
         }

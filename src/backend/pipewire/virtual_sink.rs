@@ -1,6 +1,12 @@
 use pipewire::spa::{pod::Pod, utils::Direction};
 use ringbuf::{HeapProd, traits::Producer};
-use std::ops::Deref;
+use std::{
+    ops::Deref,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 use crate::backend::{
     constants,
@@ -10,6 +16,7 @@ use crate::backend::{
 struct AdditionalData {
     sender: CustomEventSender,
     audio_producer: HeapProd<u8>,
+    clear_stale_ring_bytes: Arc<AtomicBool>,
 }
 
 pub struct VirtualSink {
@@ -18,7 +25,13 @@ pub struct VirtualSink {
 }
 
 impl VirtualSink {
-    pub fn new(pw_core: pipewire::core::CoreRc, selected_node_name: String, state_change_sender: CustomEventSender, audio_producer: HeapProd<u8>) -> Result<Self, String> {
+    pub fn new(
+        pw_core: pipewire::core::CoreRc,
+        selected_node_name: String,
+        state_change_sender: CustomEventSender,
+        audio_producer: HeapProd<u8>,
+        clear_stale_ring_bytes: Arc<AtomicBool>,
+    ) -> Result<Self, String> {
         // https://docs.pipewire.org/group__pw__stream.html#ga712ca485dc634252d144556074980f0a
         let stream = pipewire::stream::StreamRc::new(
             pw_core,
@@ -42,6 +55,7 @@ impl VirtualSink {
             .add_local_listener_with_user_data(AdditionalData {
                 sender: state_change_sender,
                 audio_producer,
+                clear_stale_ring_bytes,
             })
             .state_changed(|_stream, data, _old_state, new_state| {
                 // so rustfmt doesnt inline this
@@ -92,7 +106,12 @@ impl VirtualSink {
                 }
 
                 let slice_length_adjusted_for_whole_frames_only = (end - start) - ((end - start) % constants::AUDIOPASS_AUDIO_FRAME_SIZE_BYTES);
-                data.audio_producer.push_slice(&bytes_in_buffer[start..start + slice_length_adjusted_for_whole_frames_only]);
+                let pushed_count = data.audio_producer.push_slice(&bytes_in_buffer[start..start + slice_length_adjusted_for_whole_frames_only]);
+                if pushed_count < slice_length_adjusted_for_whole_frames_only {
+                    // all provided frames could not be written = not enough capacity in ring
+                    // = audio in the ring is stale (piled up unconsumed bytes) = mark for .clear() by consumer
+                    data.clear_stale_ring_bytes.store(true, Ordering::Release);
+                }
             })
             .register();
 
