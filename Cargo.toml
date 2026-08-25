@@ -23,3 +23,4 @@ eframe = { version = "0.36.1" }
 # (and >=0_3_44 lets me use pipewire::keys::TARGET_OBJECT to create stream targeting physical mic (or any node I guess))
 pipewire = { version = "0.10.1", features = ["v0_3_49"] }
 ringbuf = { version = "0.5.1"}
+rfd = { version = "0.17.2" }
