@@ -111,7 +111,6 @@ impl PipewireWorkerWrapper {
             // https://docs.pipewire.org/structpw__registry__events.html#a37bd7089a7a07d7154e111e67b25f96c
             .global(move |global| match global.type_ {
                 ObjectType::Node => {
-                    println!("global add callback");
                     if let Some(source) = source_from_global(global) {
                         let sources = &mut closure_2_worker.borrow_mut().registry_data.sources;
                         sources.push(source);
@@ -122,9 +121,14 @@ impl PipewireWorkerWrapper {
             })
             // https://docs.pipewire.org/structpw__registry__events.html#a04c4f7cbbf5dcc0c54887862887dbc97
             .global_remove(move |removed_id| {
-                println!("global remove callback");
                 let sources = &mut closure_3_worker.borrow_mut().registry_data.sources;
-                sources.retain(|s| s.id != removed_id);
+                let Some(idx) = sources.iter().position(|s| s.id == removed_id) else {
+                    // turns out add/remove callbacks run for a lot more than just audio devices dis/connecting
+                    // (even when moving the cursor over app icons in the taskbar???)
+                    // return early if change is not related.
+                    return;
+                };
+                sources.remove(idx);
                 let _ = closure_3_event_sender.send(PipewireEvent::Sources { sources: sources.clone() });
             })
             .register();
