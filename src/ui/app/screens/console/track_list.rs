@@ -1,6 +1,7 @@
 use crate::ui::{self, style};
 use eframe::egui::{self, Label, Layout, Margin, RichText, Stroke};
 use std::sync::mpsc;
+use uuid::Uuid;
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
     process_picker_result(app);
@@ -23,7 +24,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
 
     ui.add_space(8.0);
 
-    if app.track_list.len() == 0 {
+    if app.datastore.tracks().get().len() == 0 {
         ui.vertical_centered(|ui| {
             ui.label(RichText::new("No tracks yet.").size(20.0).color(style::SECONDARY_TEXT));
         });
@@ -38,7 +39,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
             ui.visuals_mut().widgets.inactive.bg_stroke = Stroke::new(1.0, style::SECONDARY_TEXT);
             ui.visuals_mut().widgets.hovered.weak_bg_fill = style::SECONDARY_BACKGROUND;
 
-            let mut track_index_to_remove = None as Option<usize>;
+            let mut track_id_to_remove = None as Option<Uuid>;
 
             egui::ScrollArea::vertical()
                 .content_margin(Margin {
@@ -50,9 +51,9 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                 .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysVisible)
                 .max_height(400.0)
                 .show(ui, |ui| {
-                    for (i, track) in app.track_list.iter().enumerate() {
-                        let track_name = track.file_name().unwrap();
-                        let track_parent_dir = track.parent().unwrap();
+                    for (i, track) in app.datastore.tracks().get().iter().enumerate() {
+                        let track_name = track.path.file_name().unwrap();
+                        let track_parent_dir = track.path.parent().unwrap();
 
                         ui.with_layout(Layout::left_to_right(egui::Align::TOP), |ui| {
                             egui::Frame::default()
@@ -89,7 +90,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                                             ui.add(Label::new(RichText::new(track_parent_dir.to_string_lossy()).size(12.0).color(style::SECONDARY_TEXT)).truncate());
                                         });
                                         if ui.button(RichText::new("Remove").size(16.0).color(style::DANGER)).clicked() {
-                                            track_index_to_remove = Some(i);
+                                            track_id_to_remove = Some(track.id);
                                         }
                                         ui.add_space(-9.0);
                                     })
@@ -98,8 +99,11 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                     }
                 });
 
-            if let Some(i) = track_index_to_remove {
-                app.track_list.remove(i);
+            if let Some(uuid) = track_id_to_remove {
+                match app.datastore.tracks().remove(uuid) {
+                    Ok(_) => {}
+                    Err(e) => app.critical_error = Some(e),
+                }
             }
         });
     });
@@ -122,7 +126,10 @@ fn process_picker_result(app: &mut ui::App) {
 
         match received {
             Ok(optional_pathlist) => match optional_pathlist {
-                Some(pathlist) => app.track_list.extend(pathlist),
+                Some(pathlist) => match app.datastore.tracks().add(pathlist) {
+                    Ok(_) => {}
+                    Err(e) => app.critical_error = Some(e),
+                },
                 None => app.track_picker_receiver = None,
             },
             Err(e) => match e {

@@ -6,7 +6,6 @@ authors = ["Vishnu Nithin Reddy"]
 edition = "2024"
 
 
-
 [profile.dev]
 incremental = true
 
@@ -15,12 +14,21 @@ codegen-units = 1
 lto = true
 opt-level = 3
 panic = "abort"
-strip = "symbols" 
+strip = "symbols"
 
 [dependencies]
 eframe = { version = "0.36.1" }
 # 0_3_49 lets me use buffer.requested() for frame count pipewire recommends when writing to source stream (src/backend/pipewire/virtual_mic.rs)
 # (and >=0_3_44 lets me use pipewire::keys::TARGET_OBJECT to create stream targeting physical mic (or any node I guess))
 pipewire = { version = "0.10.1", features = ["v0_3_49"] }
-ringbuf = { version = "0.5.1"}
+ringbuf = { version = "0.5.1" }
 rfd = { version = "0.17.2" }
+uuid = { version = "=1.26.0", features = ["serde", "v4"] }
+serde = { version = "1.0.229" }
+serde_json = { version = "1.0.151" }
+tokio = { version = "1.50.0", features = [
+  "fs",
+  "rt-multi-thread",
+  "sync",
+  "time",
+] }

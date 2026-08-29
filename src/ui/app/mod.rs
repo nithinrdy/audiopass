@@ -7,7 +7,10 @@ mod screens;
 use screens::MainScreen;
 
 use crate::{
-    backend::pipewire::{PipewireEvent, PipewireHook, PipewireSource},
+    backend::{
+        datastore,
+        pipewire::{PipewireEvent, PipewireHook, PipewireSource},
+    },
     ui::constants::IS_DEV,
 };
 
@@ -18,7 +21,7 @@ pub struct App {
     pipewire_instance: PipewireHook,
     critical_error: Option<String>,
     valid_sources: Vec<PipewireSource>,
-    track_list: Vec<std::path::PathBuf>,
+    datastore: datastore::DatastoreManager,
     track_picker_receiver: Option<mpsc::Receiver<Option<Vec<PathBuf>>>>,
 }
 
@@ -31,7 +34,7 @@ impl App {
             pipewire_instance: pw_instance,
             critical_error: None,
             valid_sources: Vec::new(),
-            track_list: Vec::new(),
+            datastore: datastore::DatastoreManager::new(),
             track_picker_receiver: None,
         }
     }
