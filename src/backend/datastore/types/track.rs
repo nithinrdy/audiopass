@@ -11,10 +11,14 @@ pub struct Track {
 }
 
 pub struct TracksManager<'a> {
-    pub datastore: &'a mut DatastoreManager,
+    datastore: &'a mut DatastoreManager,
 }
 
 impl TracksManager<'_> {
+    pub fn new(d: &mut DatastoreManager) -> TracksManager<'_> {
+        TracksManager { datastore: d }
+    }
+
     pub fn get(&self) -> &[Track] {
         &self.datastore.data.track_list
     }

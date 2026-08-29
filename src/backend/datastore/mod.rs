@@ -27,7 +27,7 @@ pub struct DatastoreManager {
 
 impl DatastoreManager {
     pub fn tracks(&mut self) -> TracksManager<'_> {
-        TracksManager { datastore: self }
+        TracksManager::new(self)
     }
 }
 
