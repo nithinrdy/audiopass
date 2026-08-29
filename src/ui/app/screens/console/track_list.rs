@@ -68,11 +68,11 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                                 })
                                 .outer_margin(Margin { left: 0, right: 0, top: 0, bottom: 2 })
                                 .show(ui, |ui| {
-                                    let remove_button_width = 88.0;
+                                    let remove_button_width = 40.0;
                                     let spacing = ui.spacing().item_spacing.x;
 
                                     ui.horizontal(|ui| {
-                                        if ui.button(RichText::new("Play").size(16.0).color(style::ACCENT)).clicked() {
+                                        if ui.button(egui::RichText::new(egui_phosphor::regular::PLAY).size(16.0).color(style::ACCENT)).clicked() {
                                             // play
                                         }
                                         ui.add_space(-9.0);
@@ -89,7 +89,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                                             ui.add_space(-1.0);
                                             ui.add(Label::new(RichText::new(track_parent_dir.to_string_lossy()).size(12.0).color(style::SECONDARY_TEXT)).truncate());
                                         });
-                                        if ui.button(RichText::new("Remove").size(16.0).color(style::DANGER)).clicked() {
+                                        if ui.button(egui::RichText::new(egui_phosphor::regular::TRASH).size(16.0).color(style::DANGER)).clicked() {
                                             track_id_to_remove = Some(track.id);
                                         }
                                         ui.add_space(-9.0);

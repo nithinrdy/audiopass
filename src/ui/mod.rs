@@ -1,4 +1,5 @@
 use crate::backend::pipewire;
+use eframe::egui;
 mod app;
 pub mod constants;
 mod style;
@@ -8,6 +9,10 @@ pub fn run_app() -> eframe::Result<()> {
         "AudioPass",
         constants::eframe_options(),
         Box::new(|context| {
+            let mut fonts = egui::FontDefinitions::default();
+            egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+            context.egui_ctx.set_fonts(fonts);
+
             // passing context to pipewire thread to let it trigger repaints from the other side because
             // https://stackoverflow.com/a/77211190
             let pipewire_instance = pipewire::start_pipewire_worker(context.egui_ctx.clone())?;
