@@ -72,16 +72,27 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                                     let spacing = ui.spacing().item_spacing.x;
 
                                     ui.horizontal(|ui| {
-                                        if ui.button(egui::RichText::new(egui_phosphor::regular::PLAY).size(16.0).color(style::ACCENT)).clicked() {
-                                            // play
-                                        }
+                                        ui.add_enabled_ui(
+                                            match app.playback_controller.get_active_track() {
+                                                Some(t) => t.id != track.id,
+                                                None => true,
+                                            },
+                                            |ui| {
+                                                if ui.button(egui::RichText::new(egui_phosphor::regular::PLAY).size(16.0).color(style::ACCENT)).clicked() {
+                                                    app.playback_controller.reset_and_new(track.clone());
+                                                    app.playback_controller.start_or_resume();
+                                                }
+                                            },
+                                        );
                                         ui.add_space(-9.0);
+
                                         egui::Frame::default().inner_margin(2).stroke(egui::Stroke::new(1.0, style::SECONDARY_TEXT)).show(ui, |ui| {
                                             ui.vertical(|ui| {
                                                 ui.add_space(1.0);
                                                 ui.label(RichText::new(i.to_string()).size(16.0));
                                             });
                                         });
+
                                         ui.vertical(|ui| {
                                             ui.set_width(ui.available_width() - remove_button_width - spacing);
                                             ui.add_space(2.0);
@@ -89,6 +100,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                                             ui.add_space(-1.0);
                                             ui.add(Label::new(RichText::new(track_parent_dir.to_string_lossy()).size(12.0).color(style::SECONDARY_TEXT)).truncate());
                                         });
+
                                         if ui.button(egui::RichText::new(egui_phosphor::regular::TRASH).size(16.0).color(style::DANGER)).clicked() {
                                             track_id_to_remove = Some(track.id);
                                         }
@@ -100,6 +112,14 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                 });
 
             if let Some(uuid) = track_id_to_remove {
+                match app.playback_controller.get_active_track() {
+                    Some(t) => {
+                        if t.id == uuid {
+                            app.playback_controller.reset();
+                        }
+                    }
+                    None => {}
+                }
                 match app.datastore.tracks().remove(uuid) {
                     Ok(_) => {}
                     Err(e) => app.critical_error = Some(e),
@@ -114,7 +134,7 @@ fn open_track_picker(app: &mut ui::App, context: egui::Context) {
     app.track_picker_receiver = Some(files_receiver);
 
     std::thread::spawn(move || {
-        let selected_tracks = rfd::FileDialog::new().set_title("Add tracks").pick_files();
+        let selected_tracks = rfd::FileDialog::new().set_title("Add tracks").pick_files(); // TODO: add extension filter
         let _ = files_sender.send(selected_tracks);
         context.request_repaint();
     });

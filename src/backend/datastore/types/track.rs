@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::backend::datastore::DatastoreManager;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Track {
     pub id: Uuid,
     pub path: path::PathBuf,

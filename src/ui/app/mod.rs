@@ -10,6 +10,7 @@ use crate::{
     backend::{
         datastore,
         pipewire::{PipewireEvent, PipewireHook, PipewireSource},
+        playback,
     },
     ui::constants::IS_DEV,
 };
@@ -23,6 +24,7 @@ pub struct App {
     valid_sources: Vec<PipewireSource>,
     datastore: datastore::DatastoreManager,
     track_picker_receiver: Option<mpsc::Receiver<Option<Vec<PathBuf>>>>,
+    playback_controller: playback::PlaybackController,
 }
 
 impl App {
@@ -36,6 +38,7 @@ impl App {
             valid_sources: Vec::new(),
             datastore: datastore::DatastoreManager::new(),
             track_picker_receiver: None,
+            playback_controller: playback::PlaybackController::new(),
         }
     }
 }
