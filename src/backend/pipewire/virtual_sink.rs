@@ -1,5 +1,8 @@
 use pipewire::spa::{pod::Pod, utils::Direction};
-use ringbuf::{HeapProd, traits::Producer};
+use ringbuf::{
+    HeapProd,
+    traits::{Observer, Producer},
+};
 use std::{
     ops::Deref,
     sync::{
@@ -15,8 +18,8 @@ use crate::backend::{
 
 struct AdditionalData {
     sender: CustomEventSender,
-    audio_producer: HeapProd<u8>,
-    clear_stale_ring_bytes: Arc<AtomicBool>,
+    audio_producer: HeapProd<f32>,
+    clear_stale_ring_samples: Arc<AtomicBool>,
 }
 
 pub struct VirtualSink {
@@ -29,8 +32,8 @@ impl VirtualSink {
         pw_core: pipewire::core::CoreRc,
         selected_node_name: String,
         state_change_sender: CustomEventSender,
-        audio_producer: HeapProd<u8>,
-        clear_stale_ring_bytes: Arc<AtomicBool>,
+        audio_producer: HeapProd<f32>,
+        clear_stale_ring_samples: Arc<AtomicBool>,
     ) -> Result<Self, String> {
         // https://docs.pipewire.org/group__pw__stream.html#ga712ca485dc634252d144556074980f0a
         let stream = pipewire::stream::StreamRc::new(
@@ -55,7 +58,7 @@ impl VirtualSink {
             .add_local_listener_with_user_data(AdditionalData {
                 sender: state_change_sender,
                 audio_producer,
-                clear_stale_ring_bytes,
+                clear_stale_ring_samples,
             })
             .state_changed(|_stream, data, _old_state, new_state| {
                 // so rustfmt doesnt inline this
@@ -105,12 +108,22 @@ impl VirtualSink {
                     return;
                 }
 
-                let slice_length_adjusted_for_whole_frames_only = (end - start) - ((end - start) % constants::AUDIOPASS_AUDIO_FRAME_SIZE_BYTES);
-                let pushed_count = data.audio_producer.push_slice(&bytes_in_buffer[start..start + slice_length_adjusted_for_whole_frames_only]);
-                if pushed_count < slice_length_adjusted_for_whole_frames_only {
+                let complete_frame_byte_count = (end - start) - ((end - start) % constants::AUDIOPASS_BYTES_PER_FRAME);
+                let received_sample_count = complete_frame_byte_count / constants::AUDIOPASS_BYTES_PER_SAMPLE;
+
+                let vacant_sample_slots_count = data.audio_producer.vacant_len();
+                let sample_count_to_push = received_sample_count.min(vacant_sample_slots_count - (vacant_sample_slots_count % constants::AUDIOPASS_VIRTUAL_MIC_CHANNEL_COUNT as usize));
+
+                let pushed_sample_count = data.audio_producer.push_iter(
+                    bytes_in_buffer[start..(start + (sample_count_to_push * constants::AUDIOPASS_BYTES_PER_SAMPLE))]
+                        .chunks_exact(constants::AUDIOPASS_BYTES_PER_SAMPLE)
+                        .map(|sample_bytes| f32::from_le_bytes(sample_bytes.try_into().unwrap())), // pipewire callbacks + .chunks_exact(4) will only ever provide whole samples
+                );
+
+                if pushed_sample_count < received_sample_count {
                     // all provided frames could not be written = not enough capacity in ring
-                    // = audio in the ring is stale (piled up unconsumed bytes) = mark for .clear() by consumer
-                    data.clear_stale_ring_bytes.store(true, Ordering::Release);
+                    // = audio in the ring is stale (piled up unconsumed samples) = mark for .clear() by consumer
+                    data.clear_stale_ring_samples.store(true, Ordering::Release);
                 }
             })
             .register();

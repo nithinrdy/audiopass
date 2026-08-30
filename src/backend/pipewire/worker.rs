@@ -37,8 +37,8 @@ struct PipewireWorker {
     virtual_sink: Option<VirtualSink>,
     event_sender: CustomEventSender,
     registry_data: PipewireRegistryData,
-    audio_ring: Arc<HeapRb<u8>>,
-    clear_stale_ring_bytes: Arc<AtomicBool>, // 100ms of stale audio is no big deal, just an excuse to try out atomics
+    audio_ring: Arc<HeapRb<f32>>,
+    clear_stale_ring_samples: Arc<AtomicBool>, // 100ms of stale audio is no big deal, just an excuse to try out atomics
 }
 
 impl PipewireWorkerWrapper {
@@ -73,8 +73,8 @@ impl PipewireWorkerWrapper {
                     virtual_sink: None,
                     event_sender,
                     registry_data: PipewireRegistryData::default(),
-                    audio_ring: Arc::new(HeapRb::new(constants::AUDIOPASS_MIC_RING_CAPACITY_BYTES)),
-                    clear_stale_ring_bytes: Arc::new(AtomicBool::new(false)),
+                    audio_ring: Arc::new(HeapRb::new(constants::AUDIOPASS_MIC_RING_CAPACITY_IN_SAMPLES)),
+                    clear_stale_ring_samples: Arc::new(AtomicBool::new(false)),
                 }
             })),
         })
@@ -154,7 +154,7 @@ impl PipewireWorker {
                     self.core.clone(),
                     event_sender.clone(),
                     persistent_audio_consumer,
-                    self.clear_stale_ring_bytes.clone(),
+                    self.clear_stale_ring_samples.clone(),
                 )?);
             }
             PipewireCommand::CreateVirtualSink { selected_node_name } => {
@@ -167,7 +167,7 @@ impl PipewireWorker {
                     selected_node_name,
                     event_sender.clone(),
                     audio_producer_for_this_mic,
-                    self.clear_stale_ring_bytes.clone(),
+                    self.clear_stale_ring_samples.clone(),
                 )?);
             }
             _ => unreachable!(),

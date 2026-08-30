@@ -1,7 +1,10 @@
 // mostly from this example: https://sources.debian.org/src/rust-pipewire/0.9.2-2/examples/audio-capture.rs/#L43.
 
 use pipewire::spa::{pod::Pod, utils::Direction};
-use ringbuf::{HeapCons, traits::Consumer};
+use ringbuf::{
+    HeapCons,
+    traits::{Consumer, Observer},
+};
 use std::{
     ops::Deref,
     sync::{
@@ -17,8 +20,9 @@ use crate::backend::{
 
 struct AdditionalData {
     sender: CustomEventSender,
-    audio_consumer: HeapCons<u8>,
-    clear_stale_ring_bytes: Arc<AtomicBool>,
+    audio_consumer: HeapCons<f32>,
+    output_sample_buffer: Vec<f32>,
+    clear_stale_ring_samples: Arc<AtomicBool>,
 }
 
 pub struct VirtualMic {
@@ -27,7 +31,10 @@ pub struct VirtualMic {
 }
 
 impl VirtualMic {
-    pub fn new(pw_core: pipewire::core::CoreRc, state_change_sender: CustomEventSender, audio_consumer: HeapCons<u8>, clear_stale_ring_bytes: Arc<AtomicBool>) -> Result<Self, String> {
+    pub fn new(pw_core: pipewire::core::CoreRc, state_change_sender: CustomEventSender, audio_consumer: HeapCons<f32>, clear_stale_ring_samples: Arc<AtomicBool>) -> Result<Self, String> {
+        // pre-allocate vec so dont have to allocate inside process() closure for rt-safety
+        let output_sample_buffer = vec![0.0; constants::AUDIOPASS_MIC_RING_CAPACITY_IN_SAMPLES];
+
         // https://docs.pipewire.org/group__pw__stream.html#ga712ca485dc634252d144556074980f0a
         let stream = pipewire::stream::StreamRc::new(
             pw_core,
@@ -52,7 +59,8 @@ impl VirtualMic {
             .add_local_listener_with_user_data(AdditionalData {
                 sender: state_change_sender,
                 audio_consumer,
-                clear_stale_ring_bytes,
+                output_sample_buffer,
+                clear_stale_ring_samples,
             })
             .state_changed(|_stream, data, _old_state, new_state| {
                 // so rustfmt doesnt inline this
@@ -70,7 +78,7 @@ impl VirtualMic {
                 }
             })
             .process(|stream, data| {
-                if data.clear_stale_ring_bytes.swap(false, Ordering::Acquire) {
+                if data.clear_stale_ring_samples.swap(false, Ordering::Acquire) {
                     data.audio_consumer.clear();
                 }
                 // mostly this on_process() example: https://docs.pipewire.org/audio-src_8c-example.html
@@ -89,7 +97,7 @@ impl VirtualMic {
                 let buffer_data = &mut datas[0];
 
                 let output_size = if let Some(bytes_in_buffer) = buffer_data.data() {
-                    let max_possible_frame_count_for_provided_bytes_array = bytes_in_buffer.len() / constants::AUDIOPASS_AUDIO_FRAME_SIZE_BYTES;
+                    let max_possible_frame_count_for_provided_bytes_array = bytes_in_buffer.len() / constants::AUDIOPASS_BYTES_PER_FRAME;
 
                     // buffer.requested() is a suggestion, I think buffer.requested() == 0 doesn't mean leave empty
                     // (because the example does fill the whole array even when it's 0)
@@ -99,12 +107,21 @@ impl VirtualMic {
                     } else {
                         requested_frame_count.min(max_possible_frame_count_for_provided_bytes_array)
                     };
-                    let output_size_in_bytes = frame_count_to_write * constants::AUDIOPASS_AUDIO_FRAME_SIZE_BYTES;
+                    let output_size_in_bytes = frame_count_to_write * constants::AUDIOPASS_BYTES_PER_FRAME;
+                    let output_sample_count = frame_count_to_write * constants::AUDIOPASS_VIRTUAL_MIC_CHANNEL_COUNT as usize;
+                    let available_in_ring_sample_count = data.audio_consumer.occupied_len();
+                    let sample_count_to_pop_from_ring =
+                        output_sample_count.min(available_in_ring_sample_count - (available_in_ring_sample_count % constants::AUDIOPASS_VIRTUAL_MIC_CHANNEL_COUNT as usize));
 
-                    let popped_count = data.audio_consumer.pop_slice(&mut bytes_in_buffer[..output_size_in_bytes]); // = min(arg_array_size, available_ring_contents_size)
-                    // if entire array was filled in previous line, popped_count == output_size_in_bytes, next line does nothing.
-                    // if ring didnt have enough fill entire array, fill the rest of writable region with silence.
-                    bytes_in_buffer[popped_count..output_size_in_bytes].fill(0);
+                    let popped_sample_count = data.audio_consumer.pop_slice(&mut data.output_sample_buffer[..sample_count_to_pop_from_ring]);
+
+                    for sample_idx in 0..popped_sample_count {
+                        let byte_idx = sample_idx * constants::AUDIOPASS_BYTES_PER_SAMPLE;
+                        bytes_in_buffer[byte_idx..(byte_idx + constants::AUDIOPASS_BYTES_PER_SAMPLE)].copy_from_slice(&data.output_sample_buffer[sample_idx].to_le_bytes());
+                    }
+
+                    // fill with silence if ring didnt have enough complete frames.
+                    bytes_in_buffer[(popped_sample_count * constants::AUDIOPASS_BYTES_PER_SAMPLE)..output_size_in_bytes].fill(0);
                     output_size_in_bytes
                 } else {
                     0
@@ -113,7 +130,7 @@ impl VirtualMic {
                 // marking valid region for pipewire after writing (last part of on_process())
                 let chunk = buffer_data.chunk_mut();
                 *chunk.offset_mut() = 0;
-                *chunk.stride_mut() = constants::AUDIOPASS_AUDIO_FRAME_SIZE_BYTES as i32;
+                *chunk.stride_mut() = constants::AUDIOPASS_BYTES_PER_FRAME as i32;
                 *chunk.size_mut() = output_size as u32;
             })
             .register();
