@@ -13,7 +13,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
 
         if ui
             .add_enabled_ui(!file_picker_open, |ui| {
-                ui.small_button(RichText::new("+ Add tracks").background_color(style::SECONDARY_BACKGROUND).size(16.0))
+                ui.small_button(RichText::new(format!("{} Add tracks", egui_phosphor::regular::PLUS)).size(16.0))
             })
             .inner
             .clicked()

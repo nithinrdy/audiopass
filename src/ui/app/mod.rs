@@ -28,7 +28,11 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(pw_instance: PipewireHook) -> Self {
+    pub fn new(mut pw_instance: PipewireHook, playback_controller: playback::PlaybackController) -> Self {
+        if IS_DEV {
+            pw_instance.create_virtual_mic();
+        }
+
         Self {
             startup_complete: IS_DEV,
             active_screen: (if IS_DEV { Some(MainScreen::Console) } else { None }),
@@ -38,7 +42,7 @@ impl App {
             valid_sources: Vec::new(),
             datastore: datastore::DatastoreManager::new(),
             track_picker_receiver: None,
-            playback_controller: playback::PlaybackController::new(),
+            playback_controller: playback_controller,
         }
     }
 }

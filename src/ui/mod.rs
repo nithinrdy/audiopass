@@ -1,4 +1,4 @@
-use crate::backend::pipewire;
+use crate::backend::{pipewire, playback};
 use eframe::egui;
 mod app;
 pub mod constants;
@@ -16,7 +16,8 @@ pub fn run_app() -> eframe::Result<()> {
             // passing context to pipewire thread to let it trigger repaints from the other side because
             // https://stackoverflow.com/a/77211190
             let pipewire_instance = pipewire::start_pipewire_worker(context.egui_ctx.clone())?;
-            Ok(Box::new(app::App::new(pipewire_instance)))
+            let playback_controller = playback::PlaybackController::new()?;
+            Ok(Box::new(app::App::new(pipewire_instance, playback_controller)))
         }),
     )
 }
