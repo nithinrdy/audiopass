@@ -127,7 +127,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                             }
 
                             if ui.selectable_value(&mut app.selected_app_source_id, Some(s.id), option_label).changed() {
-                                app.pipewire_instance.create_virtual_sink(s.node_name.clone());
+                                app.pipewire_instance.create_virtual_capture(s.node_name.clone());
                             }
                         }
                     });

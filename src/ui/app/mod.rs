@@ -81,10 +81,10 @@ impl App {
                     }
                 }
 
-                PipewireEvent::VirtualSinkReady { state: Ok(()) } => {}
+                PipewireEvent::VirtualCaptureReady { state: Ok(()) } => {}
 
-                PipewireEvent::VirtualSinkReady { state: Err(err) } => {
-                    self.critical_error = Some(format!("Failed to create virtual sink to capture the physical mic: {err}"));
+                PipewireEvent::VirtualCaptureReady { state: Err(err) } => {
+                    self.critical_error = Some(format!("Failed to create virtual capture: {err}"));
                 }
 
                 PipewireEvent::VirtualMicReady { state: Ok(()) } => {

@@ -13,7 +13,7 @@ use ringbuf::{CachingCons, CachingProd, HeapRb};
 
 use crate::backend::constants;
 use crate::backend::pipewire::virtual_mic::VirtualMic;
-use crate::backend::pipewire::virtual_sink::VirtualSink;
+use crate::backend::pipewire::virtual_capture::VirtualCapture;
 use crate::backend::pipewire::{CustomEventSender, PipewireCommand, PipewireEvent};
 
 #[derive(Clone, Debug)]
@@ -25,6 +25,7 @@ pub struct PipewirePhysicalSource {
 }
 
 #[derive(Clone, Debug)]
+#[allow(non_snake_case)]
 pub struct PipewireAppSource {
     pub id: u32,
     pub node_name: String,
@@ -33,16 +34,6 @@ pub struct PipewireAppSource {
     pub info__props__media_name: Option<String>,
     pub info__state: bool,
     info__props__application_process_binary: Option<String>,
-}
-
-impl PipewireAppSource {
-    pub fn get_full_name(&self) -> String {
-        format!(
-            "{}{}",
-            self.info__props__application_name,
-            self.info__props__media_name.as_ref().and_then(|n| Some(format!(" ({})", n))).unwrap_or("".to_string())
-        )
-    }
 }
 
 #[derive(Default)]
@@ -64,7 +55,7 @@ struct PipewireWorker {
     mainloop: MainLoopRc,
     core: CoreRc,
     virtual_mic: Option<VirtualMic>,
-    virtual_sink: Option<VirtualSink>,
+    virtual_capture: Option<VirtualCapture>,
     event_sender: CustomEventSender,
     registry_data: PipewireRegistryData,
     audio_ring: Arc<HeapRb<f32>>,
@@ -100,7 +91,7 @@ impl PipewireWorkerWrapper {
                     mainloop,
                     core,
                     virtual_mic: None,
-                    virtual_sink: None,
+                    virtual_capture: None,
                     event_sender,
                     registry_data: PipewireRegistryData::default(),
                     audio_ring: Arc::new(HeapRb::new(constants::AUDIOPASS_MIC_RING_CAPACITY_IN_SAMPLES)),
@@ -261,12 +252,12 @@ impl PipewireWorker {
                     self.clear_stale_ring_samples.clone(),
                 )?);
             }
-            PipewireCommand::CreateVirtualSink { selected_node_name } => {
-                if let Some(sink) = self.virtual_sink.take() {
-                    drop(sink) // also drops the associated CachingProd instance tied to this sink, so ::new() in the next line won't panic
+            PipewireCommand::CreateVirtualCapture { selected_node_name } => {
+                if let Some(capture) = self.virtual_capture.take() {
+                    drop(capture) // also drops the associated CachingProd instance tied to this stream, so ::new() in the next line won't panic
                 }
                 let audio_producer_for_this_mic = CachingProd::new(self.audio_ring.clone());
-                self.virtual_sink = Some(VirtualSink::new(
+                self.virtual_capture = Some(VirtualCapture::new(
                     self.core.clone(),
                     selected_node_name,
                     event_sender.clone(),

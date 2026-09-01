@@ -22,12 +22,12 @@ struct AdditionalData {
     clear_stale_ring_samples: Arc<AtomicBool>,
 }
 
-pub struct VirtualSink {
+pub struct VirtualCapture {
     _stream: pipewire::stream::StreamRc,
     _callback_listener: pipewire::stream::StreamListener<AdditionalData>,
 }
 
-impl VirtualSink {
+impl VirtualCapture {
     pub fn new(
         pw_core: pipewire::core::CoreRc,
         selected_node_name: String,
@@ -38,7 +38,7 @@ impl VirtualSink {
         // https://docs.pipewire.org/group__pw__stream.html#ga712ca485dc634252d144556074980f0a
         let stream = pipewire::stream::StreamRc::new(
             pw_core,
-            constants::AUDIOPASS_VIRTUAL_SINK_STREAM_NAME,
+            constants::AUDIOPASS_VIRTUAL_CAPTURE_STREAM_NAME,
             // https://docs.pipewire.org/src_2pipewire_2keys_8h.html
             pipewire::properties::properties! {
                 *pipewire::keys::MEDIA_TYPE => "Audio",
@@ -51,7 +51,7 @@ impl VirtualSink {
 
         let stream = match stream {
             Ok(s) => s,
-            Err(e) => return Err(format!("Failed to create Pipewire stream for virtual sink: {}", e)),
+            Err(e) => return Err(format!("Failed to create Pipewire stream for virtual capture: {}", e)),
         };
 
         let listener = stream
@@ -64,13 +64,13 @@ impl VirtualSink {
                 // so rustfmt doesnt inline this
                 match new_state {
                     pipewire::stream::StreamState::Error(e) => {
-                        let _ = data.sender.send(PipewireEvent::VirtualSinkReady { state: Err(e) });
+                        let _ = data.sender.send(PipewireEvent::VirtualCaptureReady { state: Err(e) });
                     }
                     pipewire::stream::StreamState::Paused => {
-                        let _ = data.sender.send(PipewireEvent::VirtualSinkReady { state: Ok(()) });
+                        let _ = data.sender.send(PipewireEvent::VirtualCaptureReady { state: Ok(()) });
                     }
                     pipewire::stream::StreamState::Streaming => {
-                        let _ = data.sender.send(PipewireEvent::VirtualSinkReady { state: Ok(()) });
+                        let _ = data.sender.send(PipewireEvent::VirtualCaptureReady { state: Ok(()) });
                     }
                     _ => return,
                 }
@@ -130,7 +130,7 @@ impl VirtualSink {
 
         let listener = match listener {
             Ok(l) => l,
-            Err(e) => return Err(format!("Failed to attach callbacks to Pipewire stream for virtual sink: {}", e)),
+            Err(e) => return Err(format!("Failed to attach callbacks to Pipewire stream for virtual capture: {}", e)),
         };
 
         match stream.connect(
@@ -140,14 +140,14 @@ impl VirtualSink {
             pipewire::stream::StreamFlags::AUTOCONNECT | pipewire::stream::StreamFlags::MAP_BUFFERS | pipewire::stream::StreamFlags::RT_PROCESS,
             &mut ([match Pod::from_bytes(get_serialized_vec_for_pod()?.deref()) {
                 Some(p) => p,
-                None => return Err(format!("Failed to serialize libspa POD while creating virtual sink stream")),
+                None => return Err(format!("Failed to serialize libspa POD while creating virtual capture stream")),
             }]),
         ) {
             Ok(_) => {}
-            Err(e) => return Err(format!("Failed to connect virtual sink stream: {}", e)),
+            Err(e) => return Err(format!("Failed to connect virtual capture stream: {}", e)),
         }
 
-        Ok(VirtualSink {
+        Ok(VirtualCapture {
             _stream: stream,
             _callback_listener: listener,
         })

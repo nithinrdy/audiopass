@@ -7,20 +7,20 @@ pub use crate::backend::pipewire::worker::PipewireAppSource;
 pub use crate::backend::pipewire::worker::PipewirePhysicalSource;
 mod utils;
 mod virtual_mic;
-mod virtual_sink;
+mod virtual_capture;
 mod worker;
 
 static PIPEWIRE_INIT: Once = Once::new();
 
 pub enum PipewireCommand {
     CreateVirtualMic,
-    CreateVirtualSink { selected_node_name: String },
+    CreateVirtualCapture { selected_node_name: String },
     Shutdown,
 }
 pub enum PipewireEvent {
     PipewireError { error: String },
     VirtualMicReady { state: Result<(), String> },
-    VirtualSinkReady { state: Result<(), String> },
+    VirtualCaptureReady { state: Result<(), String> },
     PhysicalSources { sources: Vec<PipewirePhysicalSource> },
     AppSources { sources: HashMap<u32, PipewireAppSource> },
 }
@@ -83,8 +83,8 @@ impl PipewireHook {
         let _ = self.command_sender.send(PipewireCommand::CreateVirtualMic);
     }
 
-    pub fn create_virtual_sink(&mut self, selected_node_name: String) {
-        let _ = self.command_sender.send(PipewireCommand::CreateVirtualSink { selected_node_name });
+    pub fn create_virtual_capture(&mut self, selected_node_name: String) {
+        let _ = self.command_sender.send(PipewireCommand::CreateVirtualCapture { selected_node_name });
     }
 
     pub fn shutdown(&mut self) {
