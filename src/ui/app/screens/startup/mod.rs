@@ -2,7 +2,7 @@ use crate::ui::{self, app::components::button, style};
 use eframe::egui::{self, RichText, Stroke};
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
-    let sources = app.valid_sources.clone();
+    let sources = app.physical_sources.clone();
     let no_sources_available = sources.len() < 1;
 
     ui.vertical_centered_justified(|ui| {
@@ -34,7 +34,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
         ui.add_space(20.0);
         ui.horizontal(|ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                let selected_mic = sources.iter().find(|s| Some(s.id) == app.selected_mic_id);
+                let selected_mic = sources.iter().find(|s| Some(s.id) == app.selected_physical_source_id);
                 let selected_mic_label = match selected_mic {
                     Some(m) => {
                         allow_continue = true;
@@ -51,7 +51,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                     ui.visuals_mut().widgets.inactive.bg_stroke = Stroke::new(1.0, style::SECONDARY_TEXT);
                     ui.visuals_mut().widgets.hovered.weak_bg_fill = style::SECONDARY_BACKGROUND;
 
-                    egui::ComboBox::from_id_salt("startup_source")
+                    egui::ComboBox::from_id_salt("startup_mic_picker")
                         .selected_text(RichText::new(selected_mic_label).size(16.0))
                         .width(ui.available_width())
                         .truncate()
@@ -63,7 +63,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                             ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::new(1.0, style::ACCENT);
 
                             for s in sources {
-                                if ui.selectable_value(&mut app.selected_mic_id, Some(s.id), RichText::new(&s.description).size(16.0)).changed() {
+                                if ui.selectable_value(&mut app.selected_physical_source_id, Some(s.id), RichText::new(&s.description).size(16.0)).changed() {
                                     app.pipewire_instance.create_virtual_sink(s.node_name);
                                 };
                             }

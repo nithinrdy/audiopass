@@ -9,8 +9,8 @@ use screens::MainScreen;
 use crate::{
     backend::{
         datastore,
-        pipewire::{PipewireEvent, PipewireHook, PipewireSource},
-        playback,
+        pipewire::{PipewireAppSource, PipewireEvent, PipewireHook, PipewirePhysicalSource},
+        // playback,
     },
     ui::constants::IS_DEV,
 };
@@ -18,17 +18,22 @@ use crate::{
 pub struct App {
     startup_complete: bool,
     active_screen: Option<screens::MainScreen>,
-    selected_mic_id: Option<u32>,
     pipewire_instance: PipewireHook,
+    physical_sources: Vec<PipewirePhysicalSource>,
+    selected_physical_source_id: Option<u32>,
+    app_sources: Vec<PipewireAppSource>,
+    selected_app_source_id: Option<u32>,
     critical_error: Option<String>,
-    valid_sources: Vec<PipewireSource>,
     datastore: datastore::DatastoreManager,
     track_picker_receiver: Option<mpsc::Receiver<Option<Vec<PathBuf>>>>,
-    playback_controller: playback::PlaybackController,
+    // playback_controller: playback::PlaybackController, // TODO-file-playback
 }
 
 impl App {
-    pub fn new(mut pw_instance: PipewireHook, playback_controller: playback::PlaybackController) -> Self {
+    pub fn new(
+        mut pw_instance: PipewireHook,
+        // playback_controller: playback::PlaybackController
+    ) -> Self {
         if IS_DEV {
             pw_instance.create_virtual_mic();
         }
@@ -36,13 +41,15 @@ impl App {
         Self {
             startup_complete: IS_DEV,
             active_screen: (if IS_DEV { Some(MainScreen::Console) } else { None }),
-            selected_mic_id: None,
             pipewire_instance: pw_instance,
+            physical_sources: Vec::new(),
+            selected_physical_source_id: None,
+            app_sources: Vec::new(),
+            selected_app_source_id: None,
             critical_error: None,
-            valid_sources: Vec::new(),
             datastore: datastore::DatastoreManager::new(),
             track_picker_receiver: None,
-            playback_controller: playback_controller,
+            // playback_controller: playback_controller,
         }
     }
 }
@@ -60,10 +67,17 @@ impl App {
             };
 
             match event {
-                PipewireEvent::Sources { sources } => {
-                    self.valid_sources = sources.into_iter().filter(|s| !s.is_audiopass_mic).collect();
-                    if self.selected_mic_id.is_some() && self.valid_sources.iter().find(|s| s.id == self.selected_mic_id.unwrap()).is_none() {
-                        self.selected_mic_id = None; // clear selected mic id if not in list of sources
+                PipewireEvent::PhysicalSources { sources } => {
+                    self.physical_sources = sources.into_iter().filter(|s| !s.is_audiopass_mic).collect();
+                    if self.selected_physical_source_id.is_some() && self.physical_sources.iter().find(|s| s.id == self.selected_physical_source_id.unwrap()).is_none() {
+                        self.selected_physical_source_id = None; // clear selected mic id if not in list of sources
+                    }
+                }
+
+                PipewireEvent::AppSources { sources } => {
+                    self.app_sources = sources.keys().map(|id| sources[id].clone()).collect::<Vec<PipewireAppSource>>();
+                    if self.selected_app_source_id.is_some() && self.app_sources.iter().find(|s| s.id == self.selected_app_source_id.unwrap()).is_none() {
+                        self.selected_app_source_id = None; // clear selected app source id if not in list
                     }
                 }
 

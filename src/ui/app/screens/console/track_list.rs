@@ -72,18 +72,19 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                                     let spacing = ui.spacing().item_spacing.x;
 
                                     ui.horizontal(|ui| {
-                                        ui.add_enabled_ui(
-                                            match app.playback_controller.get_active_track() {
-                                                Some(t) => t.id != track.id,
-                                                None => true,
-                                            },
-                                            |ui| {
-                                                if ui.button(egui::RichText::new(egui_phosphor::regular::PLAY).size(16.0).color(style::ACCENT)).clicked() {
-                                                    app.playback_controller.reset_and_new(track.clone());
-                                                    app.playback_controller.start_or_resume();
-                                                }
-                                            },
-                                        );
+                                        // TODO-file-playback
+                                        // ui.add_enabled_ui(
+                                        //     match app.playback_controller.get_active_track() {
+                                        //         Some(t) => t.id != track.id,
+                                        //         None => true,
+                                        //     },
+                                        //     |ui| {
+                                        //         if ui.button(egui::RichText::new(egui_phosphor::regular::PLAY).size(16.0).color(style::ACCENT)).clicked() {
+                                        //             app.playback_controller.reset_and_new(track.clone());
+                                        //             app.playback_controller.start_or_resume();
+                                        //         }
+                                        //     },
+                                        // );
                                         ui.add_space(-9.0);
 
                                         egui::Frame::default().inner_margin(2).stroke(egui::Stroke::new(1.0, style::SECONDARY_TEXT)).show(ui, |ui| {
@@ -112,14 +113,15 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                 });
 
             if let Some(uuid) = track_id_to_remove {
-                match app.playback_controller.get_active_track() {
-                    Some(t) => {
-                        if t.id == uuid {
-                            app.playback_controller.reset();
-                        }
-                    }
-                    None => {}
-                }
+                // TODO-file-playback
+                // match app.playback_controller.get_active_track() {
+                //     Some(t) => {
+                //         if t.id == uuid {
+                //             app.playback_controller.reset();
+                //         }
+                //     }
+                //     None => {}
+                // }
                 match app.datastore.tracks().remove(uuid) {
                     Ok(_) => {}
                     Err(e) => app.critical_error = Some(e),

@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -6,6 +7,7 @@ use std::sync::atomic::AtomicBool;
 use pipewire::context::ContextRc;
 use pipewire::core::CoreRc;
 use pipewire::main_loop::MainLoopRc;
+use pipewire::node::{Node, NodeChangeMask, NodeListener, NodeState};
 use pipewire::types::ObjectType;
 use ringbuf::{CachingCons, CachingProd, HeapRb};
 
@@ -15,15 +17,43 @@ use crate::backend::pipewire::virtual_sink::VirtualSink;
 use crate::backend::pipewire::{CustomEventSender, PipewireCommand, PipewireEvent};
 
 #[derive(Clone, Debug)]
-pub struct PipewireSource {
+pub struct PipewirePhysicalSource {
     pub id: u32,
     pub node_name: String,
     pub description: String,
     pub is_audiopass_mic: bool, // shouldn't be selectable as a physical mic.
 }
+
+#[derive(Clone, Debug)]
+pub struct PipewireAppSource {
+    pub id: u32,
+    pub node_name: String,
+
+    pub info__props__application_name: String,
+    pub info__props__media_name: Option<String>,
+    pub info__state: bool,
+    info__props__application_process_binary: Option<String>,
+}
+
+impl PipewireAppSource {
+    pub fn get_full_name(&self) -> String {
+        format!(
+            "{}{}",
+            self.info__props__application_name,
+            self.info__props__media_name.as_ref().and_then(|n| Some(format!(" ({})", n))).unwrap_or("".to_string())
+        )
+    }
+}
+
 #[derive(Default)]
 pub struct PipewireRegistryData {
-    pub sources: Vec<PipewireSource>,
+    pub physical_sources: Vec<PipewirePhysicalSource>,
+    pub app_sources: HashMap<u32, PipewireAppSource>,
+}
+
+struct WatchedAppNode {
+    _listener: NodeListener,
+    _node: Node,
 }
 
 pub struct PipewireWorkerWrapper {
@@ -105,35 +135,109 @@ impl PipewireWorkerWrapper {
             }
         };
 
-        let closure_2_worker = Rc::clone(&self.worker);
-        let closure_3_worker = Rc::clone(&self.worker);
-        let closure_2_event_sender = self.worker.borrow().event_sender.clone();
-        let closure_3_event_sender = closure_2_event_sender.clone();
+        let watched_app_nodes = Rc::new(RefCell::new(HashMap::<u32, WatchedAppNode>::new()));
+        let add_closure_watched_app_nodes = Rc::clone(&watched_app_nodes);
+        let remove_closure_watch_app_nodes = Rc::clone(&watched_app_nodes);
+
+        let add_closure_worker = Rc::clone(&self.worker);
+        let remove_closure_worker = Rc::clone(&self.worker);
+        let add_closure_event_sender = self.worker.borrow().event_sender.clone();
+        let remove_closure_event_sender = add_closure_event_sender.clone();
+
+        let closure_registry = registry.clone();
 
         let _registry_listener = registry
             .add_listener_local()
             // https://docs.pipewire.org/structpw__registry__events.html#a37bd7089a7a07d7154e111e67b25f96c
             .global(move |global| match global.type_ {
                 ObjectType::Node => {
-                    if let Some(source) = source_from_global(global) {
-                        let sources = &mut closure_2_worker.borrow_mut().registry_data.sources;
-                        sources.push(source);
-                        let _ = closure_2_event_sender.send(PipewireEvent::Sources { sources: sources.clone() });
+                    if let Some(physical_source) = physical_source_from_global(global) {
+                        let physical_sources = &mut add_closure_worker.borrow_mut().registry_data.physical_sources;
+                        physical_sources.push(physical_source);
+                        let _ = add_closure_event_sender.send(PipewireEvent::PhysicalSources { sources: physical_sources.clone() });
+                    } else if let Some(app_source) = app_source_from_global(global) {
+                        let id = app_source.id;
+
+                        let node: Node = match closure_registry.bind(global) {
+                            Ok(node) => node,
+                            Err(err) => {
+                                add_closure_event_sender.send(PipewireEvent::PipewireError {
+                                    error: format!("Failed to bind node {id}: {err}"),
+                                });
+                                return;
+                            }
+                        };
+
+                        let node_listener_closure_worker = Rc::clone(&add_closure_worker);
+                        let node_listener_closure_event_sender = add_closure_event_sender.clone();
+
+                        let listener = node
+                            .add_listener_local()
+                            .info(move |info| {
+                                if info.change_mask().contains(NodeChangeMask::STATE) {
+                                    let app_sources = &mut node_listener_closure_worker.borrow_mut().registry_data.app_sources;
+                                    let source_to_modify = app_sources.get_mut(&id);
+
+                                    match source_to_modify {
+                                        Some(s) => {
+                                            s.info__state = match info.state() {
+                                                NodeState::Running => true,
+                                                _ => false,
+                                            };
+
+                                            node_listener_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() });
+                                        }
+                                        None => {}
+                                    }
+                                }
+
+                                if info.change_mask().contains(NodeChangeMask::PROPS) {
+                                    let Some(props) = info.props() else {
+                                        return;
+                                    };
+
+                                    let app_sources = &mut node_listener_closure_worker.borrow_mut().registry_data.app_sources;
+                                    let source_to_modify = app_sources.get_mut(&id);
+                                    match source_to_modify {
+                                        Some(s) => {
+                                            s.info__props__application_name = props.get("application.name").map(|n| n.to_string()).unwrap_or(s.info__props__application_name.clone());
+                                            s.info__props__application_process_binary = props.get("application.process.binary").map(|n| n.to_string());
+                                            s.info__props__media_name = props.get("media.name").map(|n| n.to_string());
+                                            println!("detecting media.name: {}", &s.info__props__media_name.as_ref().unwrap_or(&"".to_string()));
+
+                                            node_listener_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() });
+                                        }
+                                        None => {}
+                                    };
+                                }
+                            })
+                            .register();
+
+                        // just to persist listener and registry binding (dropped in global_remove())
+                        add_closure_watched_app_nodes.borrow_mut().insert(id, WatchedAppNode { _listener: listener, _node: node });
+                        let app_sources = &mut add_closure_worker.borrow_mut().registry_data.app_sources;
+                        app_sources.insert(app_source.id, app_source);
+                        add_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() }); // probably not necessary because event_senders inside Node _listener will also emit at least once, but still
                     }
                 }
                 _ => {}
             })
-            // https://docs.pipewire.org/structpw__registry__events.html#a04c4f7cbbf5dcc0c54887862887dbc97
             .global_remove(move |removed_id| {
-                let sources = &mut closure_3_worker.borrow_mut().registry_data.sources;
-                let Some(idx) = sources.iter().position(|s| s.id == removed_id) else {
-                    // turns out add/remove callbacks run for a lot more than just audio devices dis/connecting
-                    // (even when moving the cursor over app icons in the taskbar???)
-                    // return early if change is not related.
+                let registry = &mut remove_closure_worker.borrow_mut().registry_data;
+
+                let app_sources = &mut registry.app_sources;
+                if app_sources.contains_key(&removed_id) {
+                    app_sources.remove(&removed_id);
+                    remove_closure_watch_app_nodes.borrow_mut().remove(&removed_id);
+                    let _ = remove_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() });
                     return;
                 };
-                sources.remove(idx);
-                let _ = closure_3_event_sender.send(PipewireEvent::Sources { sources: sources.clone() });
+
+                let physical_sources = &mut registry.physical_sources;
+                if let Some(idx) = physical_sources.iter().position(|s| s.id == removed_id) {
+                    physical_sources.remove(idx);
+                    let _ = remove_closure_event_sender.send(PipewireEvent::PhysicalSources { sources: physical_sources.clone() });
+                }
             })
             .register();
 
@@ -177,7 +281,7 @@ impl PipewireWorker {
     }
 }
 
-fn source_from_global(global: &pipewire::registry::GlobalObject<&pipewire::spa::utils::dict::DictRef>) -> Option<PipewireSource> {
+fn physical_source_from_global(global: &pipewire::registry::GlobalObject<&pipewire::spa::utils::dict::DictRef>) -> Option<PipewirePhysicalSource> {
     let props = global.props.as_ref()?;
     if props.get("media.class") != Some("Audio/Source") {
         return None;
@@ -186,10 +290,28 @@ fn source_from_global(global: &pipewire::registry::GlobalObject<&pipewire::spa::
     let node_name = props.get("node.name")?.to_string();
     let description = props.get("node.description").or_else(|| props.get("node.nick")).unwrap_or(&node_name).to_string();
     let is_audiopass_mic = node_name.contains("audiopass.virtual-mic.");
-    Some(PipewireSource {
+    Some(PipewirePhysicalSource {
         id: global.id,
         node_name,
         description,
         is_audiopass_mic,
+    })
+}
+
+fn app_source_from_global(global: &pipewire::registry::GlobalObject<&pipewire::spa::utils::dict::DictRef>) -> Option<PipewireAppSource> {
+    let props = global.props.as_ref()?;
+    if props.get("media.class") != Some("Stream/Output/Audio") {
+        return None;
+    }
+
+    let node_name = props.get("node.name")?.to_string();
+    let application_name = props.get("application.name").unwrap_or(&node_name).to_string();
+    Some(PipewireAppSource {
+        id: global.id,
+        node_name,
+        info__props__application_name: application_name,
+        info__props__media_name: None,
+        info__state: false,
+        info__props__application_process_binary: None,
     })
 }

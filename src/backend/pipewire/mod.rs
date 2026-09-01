@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use std::sync::{Once, mpsc::Sender};
 
 use eframe::egui::Context;
 
-pub use crate::backend::pipewire::worker::PipewireSource;
+pub use crate::backend::pipewire::worker::PipewireAppSource;
+pub use crate::backend::pipewire::worker::PipewirePhysicalSource;
 mod utils;
 mod virtual_mic;
 mod virtual_sink;
@@ -19,7 +21,8 @@ pub enum PipewireEvent {
     PipewireError { error: String },
     VirtualMicReady { state: Result<(), String> },
     VirtualSinkReady { state: Result<(), String> },
-    Sources { sources: Vec<PipewireSource> },
+    PhysicalSources { sources: Vec<PipewirePhysicalSource> },
+    AppSources { sources: HashMap<u32, PipewireAppSource> },
 }
 
 #[derive(Clone)]

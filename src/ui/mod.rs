@@ -16,8 +16,11 @@ pub fn run_app() -> eframe::Result<()> {
             // passing context to pipewire thread to let it trigger repaints from the other side because
             // https://stackoverflow.com/a/77211190
             let pipewire_instance = pipewire::start_pipewire_worker(context.egui_ctx.clone())?;
-            let playback_controller = playback::PlaybackController::new()?;
-            Ok(Box::new(app::App::new(pipewire_instance, playback_controller)))
+            // let playback_controller = playback::PlaybackController::new()?; // TODO-file-playback
+            Ok(Box::new(app::App::new(
+                pipewire_instance,
+                //  playback_controller
+            )))
         }),
     )
 }
