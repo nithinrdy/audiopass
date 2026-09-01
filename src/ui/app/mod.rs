@@ -19,10 +19,12 @@ pub struct App {
     startup_complete: bool,
     active_screen: Option<screens::MainScreen>,
     pipewire_instance: PipewireHook,
+
     physical_sources: Vec<PipewirePhysicalSource>,
     selected_physical_source_id: Option<u32>,
     app_sources: Vec<PipewireAppSource>,
     selected_app_source_id: Option<u32>,
+
     critical_error: Option<String>,
     datastore: datastore::DatastoreManager,
     track_picker_receiver: Option<mpsc::Receiver<Option<Vec<PathBuf>>>>,

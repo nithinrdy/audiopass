@@ -2,16 +2,13 @@ use crate::ui::{self, app::components::button, style};
 use eframe::egui::{self, RichText, Stroke};
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
-    let sources = app.physical_sources.clone();
-    let no_sources_available = sources.len() < 1;
-
     ui.vertical_centered_justified(|ui| {
         ui.set_width(400.0);
         ui.add_space(8.0);
         ui.label(RichText::new("AudioPass").color(style::ACCENT).size(32.0).extra_letter_spacing(2.0).strong());
 
         ui.add_space(40.0);
-        if no_sources_available {
+        if app.physical_sources.len() < 1 {
             ui.label(
                 RichText::new("No physical mics or input sources detected. To proceed, please connect a physical input source and ensure Pipewire can detect it.")
                     .size(16.0)
@@ -34,7 +31,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
         ui.add_space(20.0);
         ui.horizontal(|ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                let selected_mic = sources.iter().find(|s| Some(s.id) == app.selected_physical_source_id);
+                let selected_mic = app.physical_sources.iter().find(|s| Some(s.id) == app.selected_physical_source_id);
                 let selected_mic_label = match selected_mic {
                     Some(m) => {
                         allow_continue = true;
@@ -62,9 +59,12 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                             ui.visuals_mut().selection.stroke = Stroke::new(1.0, style::PRIMARY_TEXT);
                             ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::new(1.0, style::ACCENT);
 
-                            for s in sources {
-                                if ui.selectable_value(&mut app.selected_physical_source_id, Some(s.id), RichText::new(&s.description).size(16.0)).changed() {
-                                    app.pipewire_instance.create_virtual_capture(s.node_name);
+                            for s in &app.physical_sources {
+                                if ui
+                                    .selectable_value(&mut app.selected_physical_source_id, Some(s.id), RichText::new(&s.description).size(16.0))
+                                    .changed()
+                                {
+                                    app.pipewire_instance.create_virtual_capture(s.node_name.clone());
                                 };
                             }
                         });
