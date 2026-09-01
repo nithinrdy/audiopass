@@ -11,7 +11,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
 
     ui.horizontal(|ui| {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-            let selected_app_source = app.app_sources.iter().find(|s| Some(s.id) == app.selected_app_source_id);
+            let selected_app_source = app.console_state.app_sources.iter().find(|s| Some(s.id) == app.console_state.selected_app_source_id);
             let mut selected_app_label = egui::text::LayoutJob::default();
             match selected_app_source {
                 Some(app) => {
@@ -68,7 +68,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                 ui.visuals_mut().widgets.inactive.bg_stroke = Stroke::new(1.0, style::SECONDARY_TEXT);
                 ui.visuals_mut().widgets.hovered.weak_bg_fill = style::SECONDARY_BACKGROUND;
 
-                egui::ComboBox::from_id_salt(&("audio_playing_app_picker".to_owned() + &app.app_sources.len().to_string()))
+                egui::ComboBox::from_id_salt(&("audio_playing_app_picker".to_owned() + &app.console_state.app_sources.len().to_string()))
                     .selected_text(selected_app_label)
                     .width(ui.available_width())
                     .truncate()
@@ -80,7 +80,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                         ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::new(1.0, style::ACCENT);
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                        for s in &app.app_sources {
+                        for s in &app.console_state.app_sources {
                             let mut option_label = egui::text::LayoutJob::default();
                             option_label.append(
                                 if s.info__state {
@@ -126,7 +126,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                                 None => {}
                             }
 
-                            if ui.selectable_value(&mut app.selected_app_source_id, Some(s.id), option_label).changed() {
+                            if ui.selectable_value(&mut app.console_state.selected_app_source_id, Some(s.id), option_label).changed() {
                                 app.pipewire_instance.create_virtual_capture(s.node_name.clone());
                             }
                         }

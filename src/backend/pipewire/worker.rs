@@ -194,7 +194,6 @@ impl PipewireWorkerWrapper {
                                             s.info__props__application_name = props.get("application.name").map(|n| n.to_string()).unwrap_or(s.info__props__application_name.clone());
                                             s.info__props__application_process_binary = props.get("application.process.binary").map(|n| n.to_string());
                                             s.info__props__media_name = props.get("media.name").map(|n| n.to_string());
-                                            println!("detecting media.name: {}", &s.info__props__media_name.as_ref().unwrap_or(&"".to_string()));
 
                                             node_listener_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() });
                                         }

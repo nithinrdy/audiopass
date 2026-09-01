@@ -9,10 +9,10 @@ use screens::MainScreen;
 use crate::{
     backend::{
         datastore,
-        pipewire::{PipewireAppSource, PipewireEvent, PipewireHook, PipewirePhysicalSource},
+        pipewire::{PipewireAppSource, PipewireEvent, PipewireHook},
         // playback,
     },
-    ui::constants::IS_DEV,
+    ui::{app::screens::console, constants::IS_DEV},
 };
 
 pub struct App {
@@ -20,10 +20,7 @@ pub struct App {
     active_screen: Option<screens::MainScreen>,
     pipewire_instance: PipewireHook,
 
-    physical_sources: Vec<PipewirePhysicalSource>,
-    selected_physical_source_id: Option<u32>,
-    app_sources: Vec<PipewireAppSource>,
-    selected_app_source_id: Option<u32>,
+    console_state: console::ConsoleState,
 
     critical_error: Option<String>,
     datastore: datastore::DatastoreManager,
@@ -44,10 +41,7 @@ impl App {
             startup_complete: IS_DEV,
             active_screen: (if IS_DEV { Some(MainScreen::Console) } else { None }),
             pipewire_instance: pw_instance,
-            physical_sources: Vec::new(),
-            selected_physical_source_id: None,
-            app_sources: Vec::new(),
-            selected_app_source_id: None,
+            console_state: console::ConsoleState::default(),
             critical_error: None,
             datastore: datastore::DatastoreManager::new(),
             track_picker_receiver: None,
@@ -70,16 +64,23 @@ impl App {
 
             match event {
                 PipewireEvent::PhysicalSources { sources } => {
-                    self.physical_sources = sources.into_iter().filter(|s| !s.is_audiopass_mic).collect();
-                    if self.selected_physical_source_id.is_some() && self.physical_sources.iter().find(|s| s.id == self.selected_physical_source_id.unwrap()).is_none() {
-                        self.selected_physical_source_id = None; // clear selected mic id if not in list of sources
+                    self.console_state.physical_sources = sources.into_iter().filter(|s| !s.is_audiopass_mic).collect();
+                    if self.console_state.selected_physical_source_id.is_some()
+                        && self
+                            .console_state
+                            .physical_sources
+                            .iter()
+                            .find(|s| s.id == self.console_state.selected_physical_source_id.unwrap())
+                            .is_none()
+                    {
+                        self.console_state.selected_physical_source_id = None; // clear selected mic id if not in list of sources
                     }
                 }
 
                 PipewireEvent::AppSources { sources } => {
-                    self.app_sources = sources.keys().map(|id| sources[id].clone()).collect::<Vec<PipewireAppSource>>();
-                    if self.selected_app_source_id.is_some() && self.app_sources.iter().find(|s| s.id == self.selected_app_source_id.unwrap()).is_none() {
-                        self.selected_app_source_id = None; // clear selected app source id if not in list
+                    self.console_state.app_sources = sources.keys().map(|id| sources[id].clone()).collect::<Vec<PipewireAppSource>>();
+                    if self.console_state.selected_app_source_id.is_some() && self.console_state.app_sources.iter().find(|s| s.id == self.console_state.selected_app_source_id.unwrap()).is_none() {
+                        self.console_state.selected_app_source_id = None; // clear selected app source id if not in list
                     }
                 }
 
