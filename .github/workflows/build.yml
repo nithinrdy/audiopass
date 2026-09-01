@@ -20,6 +20,11 @@ jobs:
       - name: Print glibc version
         run: ldd --version
 
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libpipewire-0.3-dev
+
       - name: Build AudioPass
         run: cargo build --release
 
