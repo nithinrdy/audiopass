@@ -1,7 +1,5 @@
-use eframe::egui;
 use crate::backend::constants;
-
-pub const IS_DEV: bool = cfg!(debug_assertions);
+use eframe::egui;
 
 pub fn eframe_options() -> eframe::NativeOptions {
     eframe::NativeOptions {

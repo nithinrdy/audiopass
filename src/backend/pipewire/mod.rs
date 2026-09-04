@@ -15,6 +15,7 @@ static PIPEWIRE_INIT: Once = Once::new();
 pub enum PipewireCommand {
     CreateVirtualMic,
     CreateVirtualCapture { selected_node_name: String },
+    DropVirtualCapture,
     Shutdown,
 }
 pub enum PipewireEvent {
@@ -85,6 +86,10 @@ impl PipewireHook {
 
     pub fn create_virtual_capture(&mut self, selected_node_name: String) {
         let _ = self.command_sender.send(PipewireCommand::CreateVirtualCapture { selected_node_name });
+    }
+
+    pub fn drop_virtual_capture(&mut self) {
+        let _ = self.command_sender.send(PipewireCommand::DropVirtualCapture);
     }
 
     pub fn shutdown(&mut self) {

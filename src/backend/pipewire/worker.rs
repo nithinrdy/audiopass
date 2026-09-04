@@ -12,8 +12,8 @@ use pipewire::types::ObjectType;
 use ringbuf::{CachingCons, CachingProd, HeapRb};
 
 use crate::backend::constants;
-use crate::backend::pipewire::virtual_mic::VirtualMic;
 use crate::backend::pipewire::virtual_capture::VirtualCapture;
+use crate::backend::pipewire::virtual_mic::VirtualMic;
 use crate::backend::pipewire::{CustomEventSender, PipewireCommand, PipewireEvent};
 
 #[derive(Clone, Debug)]
@@ -263,6 +263,9 @@ impl PipewireWorker {
                     audio_producer_for_this_mic,
                     self.clear_stale_ring_samples.clone(),
                 )?);
+            }
+            PipewireCommand::DropVirtualCapture => {
+                self.virtual_capture = None;
             }
             _ => unreachable!(),
         }

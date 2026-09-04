@@ -12,7 +12,7 @@ use crate::{
         pipewire::{PipewireAppSource, PipewireEvent, PipewireHook},
         // playback,
     },
-    ui::{app::screens::console, constants::IS_DEV},
+    ui::app::screens::console,
 };
 
 pub struct App {
@@ -30,16 +30,12 @@ pub struct App {
 
 impl App {
     pub fn new(
-        mut pw_instance: PipewireHook,
+        pw_instance: PipewireHook,
         // playback_controller: playback::PlaybackController
     ) -> Self {
-        if IS_DEV {
-            pw_instance.create_virtual_mic();
-        }
-
         Self {
-            startup_complete: IS_DEV,
-            active_screen: (if IS_DEV { Some(MainScreen::Console) } else { None }),
+            startup_complete: false,
+            active_screen: None,
             pipewire_instance: pw_instance,
             console_state: console::ConsoleState::default(),
             critical_error: None,
@@ -74,6 +70,7 @@ impl App {
                             .is_none()
                     {
                         self.console_state.selected_physical_source_id = None; // clear selected mic id if not in list of sources
+                        self.pipewire_instance.drop_virtual_capture();
                     }
                 }
 
@@ -81,6 +78,7 @@ impl App {
                     self.console_state.app_sources = sources.keys().map(|id| sources[id].clone()).collect::<Vec<PipewireAppSource>>();
                     if self.console_state.selected_app_source_id.is_some() && self.console_state.app_sources.iter().find(|s| s.id == self.console_state.selected_app_source_id.unwrap()).is_none() {
                         self.console_state.selected_app_source_id = None; // clear selected app source id if not in list
+                        self.pipewire_instance.drop_virtual_capture();
                     }
                 }
 

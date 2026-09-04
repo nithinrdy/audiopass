@@ -1,9 +1,5 @@
-use crate::ui::{
-    App,
-    app::{components::button, screens::MainScreen},
-    style,
-};
-use eframe::egui::{self, CornerRadius, RichText};
+use crate::ui::{App, app::screens::MainScreen, style};
+use eframe::egui::{self, Button, CornerRadius, RichText};
 
 const TABS: [&str; 3] = ["Console", "Help", "About"];
 
@@ -19,17 +15,22 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 _ => unreachable!("unknown sidebar tab: {tab}"),
             };
 
-            let clicked = button::show(
-                app,
-                ui,
-                tab,
-                if app.active_screen == Some(screen_for_tab) {
-                    button::ButtonVariant::Primary
-                } else {
-                    button::ButtonVariant::Secondary
-                },
-            )
-            .inner;
+            let clicked = ui
+                .add(
+                    Button::new(
+                        RichText::new(tab)
+                            .color(if app.active_screen == Some(screen_for_tab.clone()) {
+                                style::CONTRAST_TEXT
+                            } else {
+                                style::PRIMARY_TEXT
+                            })
+                            .size(18.0),
+                    )
+                    .fill(if app.active_screen == Some(screen_for_tab) { style::ACCENT } else { style::SECONDARY_BACKGROUND })
+                    .min_size(egui::Vec2 { x: 20.0, y: 40.0 }),
+                )
+                .clicked();
+
             if clicked {
                 match tab {
                     "Console" => app.active_screen = Some(MainScreen::Console),
