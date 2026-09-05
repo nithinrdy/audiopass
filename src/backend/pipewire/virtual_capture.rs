@@ -23,8 +23,14 @@ struct AdditionalData {
 }
 
 pub struct VirtualCapture {
-    _stream: pipewire::stream::StreamRc,
     _callback_listener: pipewire::stream::StreamListener<AdditionalData>,
+    _stream: pipewire::stream::StreamRc,
+}
+
+impl Drop for VirtualCapture {
+    fn drop(&mut self) {
+        let _ = self._stream.disconnect();
+    }
 }
 
 impl VirtualCapture {
@@ -46,6 +52,8 @@ impl VirtualCapture {
                 *pipewire::keys::MEDIA_ROLE => "DSP",
                 *pipewire::keys::TARGET_OBJECT => selected_node_name.as_str(),
                 *pipewire::keys::NODE_VIRTUAL => "true",
+                "node.dont-fallback" => "true",
+                *pipewire::keys::NODE_DONT_RECONNECT => "true",
             },
         );
 

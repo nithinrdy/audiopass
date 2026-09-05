@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use pipewire::context::ContextRc;
 use pipewire::core::CoreRc;
@@ -255,6 +255,7 @@ impl PipewireWorker {
                 if let Some(capture) = self.virtual_capture.take() {
                     drop(capture) // also drops the associated CachingProd instance tied to this stream, so ::new() in the next line won't panic
                 }
+                self.clear_stale_ring_samples.store(true, Ordering::Release);
                 let audio_producer_for_this_mic = CachingProd::new(self.audio_ring.clone());
                 self.virtual_capture = Some(VirtualCapture::new(
                     self.core.clone(),
@@ -266,6 +267,7 @@ impl PipewireWorker {
             }
             PipewireCommand::DropVirtualCapture => {
                 self.virtual_capture = None;
+                self.clear_stale_ring_samples.store(true, Ordering::Release);
             }
             _ => unreachable!(),
         }

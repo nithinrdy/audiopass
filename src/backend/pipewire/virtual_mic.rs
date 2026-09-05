@@ -26,8 +26,14 @@ struct AdditionalData {
 }
 
 pub struct VirtualMic {
-    _stream: pipewire::stream::StreamRc,
     _callback_listener: pipewire::stream::StreamListener<AdditionalData>,
+    _stream: pipewire::stream::StreamRc,
+}
+
+impl Drop for VirtualMic {
+    fn drop(&mut self) {
+        let _ = self._stream.disconnect();
+    }
 }
 
 impl VirtualMic {
