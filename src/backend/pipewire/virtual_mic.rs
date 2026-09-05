@@ -1,4 +1,4 @@
-// mostly from this example: https://sources.debian.org/src/rust-pipewire/0.9.2-2/examples/audio-capture.rs/#L43.
+// Partly based on this example: https://sources.debian.org/src/rust-pipewire/0.9.2-2/examples/audio-capture.rs/#L43
 
 use pipewire::spa::{pod::Pod, utils::Direction};
 use ringbuf::{

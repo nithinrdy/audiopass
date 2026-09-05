@@ -3,14 +3,14 @@ use eframe::egui::{self, RichText, Stroke};
 use crate::ui::{self, style};
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
-    ui.label(RichText::new("Selected Microphone").size(16.0));
+    ui.label(RichText::new("Selected Physical Mic").size(16.0));
     ui.add_space(2.0);
     ui.horizontal(|ui| {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
             let selected_mic = app.console_state.physical_sources.iter().find(|s| Some(s.id) == app.console_state.selected_physical_source_id);
             let selected_mic_label = match selected_mic {
                 Some(m) => m.description.clone(),
-                _ => "-".to_string(),
+                _ => "".to_string(),
             };
 
             ui.scope(|ui| {

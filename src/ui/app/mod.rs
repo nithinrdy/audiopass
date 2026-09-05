@@ -5,14 +5,13 @@ use eframe::egui;
 mod components;
 mod screens;
 use screens::MainScreen;
+mod types;
+use types::state;
 
-use crate::{
-    backend::{
-        datastore,
-        pipewire::{PipewireAppSource, PipewireEvent, PipewireHook},
-        // playback,
-    },
-    ui::app::screens::console,
+use crate::backend::{
+    datastore,
+    pipewire::{PipewireAppSource, PipewireEvent, PipewireHook},
+    // playback,
 };
 
 pub struct App {
@@ -20,7 +19,8 @@ pub struct App {
     active_screen: Option<screens::MainScreen>,
     pipewire_instance: PipewireHook,
 
-    console_state: console::ConsoleState,
+    playback_mode: state::PlaybackMode,
+    console_state: state::ConsoleState,
 
     critical_error: Option<String>,
     datastore: datastore::DatastoreManager,
@@ -37,12 +37,43 @@ impl App {
             startup_complete: false,
             active_screen: None,
             pipewire_instance: pw_instance,
-            console_state: console::ConsoleState::default(),
+            console_state: state::ConsoleState::default(),
+            playback_mode: state::PlaybackMode::None,
             critical_error: None,
             datastore: datastore::DatastoreManager::new(),
             track_picker_receiver: None,
             // playback_controller: playback_controller,
         }
+    }
+}
+
+impl App {
+    pub fn set_playback_mode(&mut self, mode: state::PlaybackMode) {
+        if self.playback_mode == mode {
+            return;
+        }
+
+        self.pipewire_instance.drop_virtual_capture();
+
+        match mode {
+            state::PlaybackMode::None => {}
+            state::PlaybackMode::PhysicalMic => {
+                if let Some(selected_source) = self.console_state.selected_physical_source_id {
+                    if let Some(s) = self.console_state.physical_sources.iter().find(|s| s.id == selected_source) {
+                        self.pipewire_instance.create_virtual_capture(s.node_name.clone());
+                    }
+                }
+            }
+            state::PlaybackMode::ApplicationAudio => {
+                if let Some(selected_source) = self.console_state.selected_app_source_id {
+                    if let Some(s) = self.console_state.app_sources.iter().find(|s| s.id == selected_source) {
+                        self.pipewire_instance.create_virtual_capture(s.node_name.clone());
+                    }
+                }
+            }
+            state::PlaybackMode::LocalFile => {}
+        }
+        self.playback_mode = mode;
     }
 }
 
@@ -68,17 +99,24 @@ impl App {
                             .iter()
                             .find(|s| s.id == self.console_state.selected_physical_source_id.unwrap())
                             .is_none()
+                    // if new list of sources doesn't contain the selected physical source id
                     {
-                        self.console_state.selected_physical_source_id = None; // clear selected mic id if not in list of sources
-                        self.pipewire_instance.drop_virtual_capture();
+                        self.console_state.selected_physical_source_id = None;
+                        if self.playback_mode == state::PlaybackMode::PhysicalMic {
+                            self.pipewire_instance.drop_virtual_capture();
+                        }
                     }
                 }
 
                 PipewireEvent::AppSources { sources } => {
                     self.console_state.app_sources = sources.keys().map(|id| sources[id].clone()).collect::<Vec<PipewireAppSource>>();
-                    if self.console_state.selected_app_source_id.is_some() && self.console_state.app_sources.iter().find(|s| s.id == self.console_state.selected_app_source_id.unwrap()).is_none() {
-                        self.console_state.selected_app_source_id = None; // clear selected app source id if not in list
-                        self.pipewire_instance.drop_virtual_capture();
+                    if self.console_state.selected_app_source_id.is_some() && self.console_state.app_sources.iter().find(|s| s.id == self.console_state.selected_app_source_id.unwrap()).is_none()
+                    // if new list of sources doesn't contain the selected app source id
+                    {
+                        self.console_state.selected_app_source_id = None;
+                        if self.playback_mode == state::PlaybackMode::ApplicationAudio {
+                            self.pipewire_instance.drop_virtual_capture();
+                        }
                     }
                 }
 

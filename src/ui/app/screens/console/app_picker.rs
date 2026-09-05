@@ -4,7 +4,7 @@ use eframe::egui::{self, Align, FontId, RichText, Stroke, TextFormat};
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::NONE;
-        ui.label(RichText::new("Selected App Source").size(16.0));
+        ui.label(RichText::new("Selected Application").size(16.0));
     });
 
     ui.add_space(2.0);
