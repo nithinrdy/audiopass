@@ -16,6 +16,7 @@ use crate::backend::{
 
 pub struct App {
     startup_complete: bool,
+    startup_in_progress: bool,
     active_screen: Option<screens::MainScreen>,
     pipewire_instance: PipewireHook,
 
@@ -35,6 +36,7 @@ impl App {
     ) -> Self {
         Self {
             startup_complete: false,
+            startup_in_progress: false,
             active_screen: None,
             pipewire_instance: pw_instance,
             console_state: state::ConsoleState::default(),
@@ -84,7 +86,8 @@ impl App {
                 Ok(event) => event,
                 Err(mpsc::TryRecvError::Empty) => break,
                 Err(mpsc::TryRecvError::Disconnected) => {
-                    self.critical_error = Some("Error: Pipewire worker disconnected".to_string());
+                    self.startup_in_progress = false;
+                    self.critical_error.get_or_insert_with(|| "Error: Pipewire worker disconnected".to_string());
                     break;
                 }
             };
@@ -127,15 +130,20 @@ impl App {
                 }
 
                 PipewireEvent::VirtualMicReady { state: Ok(()) } => {
-                    self.startup_complete = true;
-                    self.active_screen = Some(MainScreen::Console);
+                    if self.startup_in_progress {
+                        self.startup_in_progress = false;
+                        self.startup_complete = true;
+                        self.active_screen = Some(MainScreen::Console);
+                    }
                 }
 
                 PipewireEvent::VirtualMicReady { state: Err(error) } => {
+                    self.startup_in_progress = false;
                     self.critical_error = Some(format!("Failed to create virtual microphone: {error}"));
                 }
 
                 PipewireEvent::PipewireError { error } => {
+                    self.startup_in_progress = false;
                     self.critical_error = Some(error);
                 }
             }

@@ -80,8 +80,10 @@ pub fn start_pipewire_worker(cloned_egui_context: Context) -> Result<PipewireHoo
 }
 
 impl PipewireHook {
-    pub fn create_virtual_mic(&mut self) {
-        let _ = self.command_sender.send(PipewireCommand::CreateVirtualMic);
+    pub fn create_virtual_mic(&mut self) -> Result<(), String> {
+        self.command_sender
+            .send(PipewireCommand::CreateVirtualMic)
+            .map_err(|_| "Failed to send virtual microphone creation request to Pipewire worker".to_string())
     }
 
     pub fn create_virtual_capture(&mut self, selected_node_name: String) {

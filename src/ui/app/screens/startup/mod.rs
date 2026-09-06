@@ -19,14 +19,27 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
         ui.add_space(80.0);
 
         if ui
-            .add(
-                Button::new(RichText::new("Continue").color(style::CONTRAST_TEXT).size(18.0))
+            .add_enabled(
+                !app.startup_in_progress && app.critical_error.is_none(),
+                Button::new(RichText::new(if app.startup_in_progress { "Starting…" } else { "Continue" }).color(style::CONTRAST_TEXT).size(18.0))
                     .fill(style::ACCENT)
                     .min_size(egui::Vec2 { x: 20.0, y: 40.0 }),
             )
             .clicked()
         {
-            app.pipewire_instance.create_virtual_mic()
+            match app.pipewire_instance.create_virtual_mic() {
+                Ok(()) => app.startup_in_progress = true,
+                Err(error) => app.critical_error = Some(error),
+            }
+        }
+
+        if let Some(error) = app.critical_error.as_ref() {
+            ui.add_space(16.0);
+            ui.separator();
+            egui::ScrollArea::new([false, true]).max_height(160.0).show(ui, |ui| {
+                ui.label(RichText::new(error).color(style::DANGER).size(14.0));
+            });
+            ui.separator();
         }
     });
 }
