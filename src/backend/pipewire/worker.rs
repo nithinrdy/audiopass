@@ -111,9 +111,17 @@ impl PipewireWorkerWrapper {
             if let PipewireCommand::Shutdown = cmd {
                 closure_mainloop.quit();
             } else {
+                let cmd_is_create_capture = match cmd {
+                    PipewireCommand::CreateVirtualCapture { .. } => true,
+                    _ => false,
+                };
                 let other_command_result = { closure_worker.borrow_mut().handle_command(cmd, closure_event_sender.clone()) };
                 if let Err(e) = other_command_result {
-                    let _ = closure_event_sender.send(PipewireEvent::PipewireError { error: e });
+                    let _ = closure_event_sender.send(if cmd_is_create_capture {
+                        PipewireEvent::VirtualCaptureReady { state: Err(e) }
+                    } else {
+                        PipewireEvent::VirtualMicReady { state: Err(e) }
+                    });
                 }
             }
         });
@@ -121,7 +129,7 @@ impl PipewireWorkerWrapper {
         let registry = match self.worker.borrow().core.get_registry_rc() {
             Ok(r) => r,
             Err(e) => {
-                let _ = self.worker.borrow().event_sender.send(PipewireEvent::PipewireError { error: e.to_string() });
+                let _ = self.worker.borrow().event_sender.send(PipewireEvent::WorkerFailure { error: e.to_string() });
                 return;
             }
         };

@@ -16,7 +16,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
         for mode in state::PlaybackMode::iterable() {
             if ui
                 .add_enabled(
-                    mode != state::PlaybackMode::LocalFile,
+                    app.worker_healthy && mode != state::PlaybackMode::LocalFile,
                     Button::new(
                         RichText::new(match mode {
                             state::PlaybackMode::None => "None",
@@ -31,9 +31,13 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                     .min_size(egui::Vec2 { x: button_width, y: 40.0 }),
                 )
                 .on_disabled_hover_text(
-                    RichText::new("Local file playback is currently a work-in-progress, coming soon!")
-                        .color(style::SECONDARY_TEXT)
-                        .size(14.0),
+                    RichText::new(if !app.worker_healthy {
+                        "Audio routing is unavailable. Please try restarting AudioPass."
+                    } else {
+                        "Local file playback is currently a work-in-progress, coming soon!"
+                    })
+                    .color(style::SECONDARY_TEXT)
+                    .size(14.0),
                 )
                 .clicked()
             {

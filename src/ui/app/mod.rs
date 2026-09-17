@@ -17,6 +17,7 @@ use crate::backend::{
 pub struct App {
     startup_complete: bool,
     startup_in_progress: bool,
+    worker_healthy: bool,
     active_screen: Option<screens::MainScreen>,
     pipewire_instance: PipewireHook,
 
@@ -37,6 +38,7 @@ impl App {
         Self {
             startup_complete: false,
             startup_in_progress: false,
+            worker_healthy: true,
             active_screen: None,
             pipewire_instance: pw_instance,
             console_state: state::ConsoleState::default(),
@@ -50,26 +52,50 @@ impl App {
 }
 
 impl App {
+    fn create_virtual_mic(&mut self) {
+        if let Err(err) = self.pipewire_instance.create_virtual_mic() {
+            self.handle_worker_failure(err);
+        } else {
+            self.startup_in_progress = true;
+        }
+    }
+
+    fn create_virtual_capture(&mut self, node_name: String) {
+        if let Err(err) = self.pipewire_instance.create_virtual_capture(node_name) {
+            self.handle_worker_failure(err);
+        }
+    }
+
+    fn drop_virtual_capture(&mut self) -> bool {
+        if let Err(err) = self.pipewire_instance.drop_virtual_capture() {
+            self.handle_worker_failure(err);
+            return false;
+        }
+        true
+    }
+
     pub fn set_playback_mode(&mut self, mode: state::PlaybackMode) {
-        if self.playback_mode == mode {
+        if !self.worker_healthy || self.playback_mode == mode {
             return;
         }
 
-        self.pipewire_instance.drop_virtual_capture();
+        if !self.drop_virtual_capture() {
+            return;
+        }
 
         match mode {
             state::PlaybackMode::None => {}
             state::PlaybackMode::PhysicalMic => {
                 if let Some(selected_source) = self.console_state.selected_physical_source_id {
                     if let Some(s) = self.console_state.physical_sources.iter().find(|s| s.id == selected_source) {
-                        self.pipewire_instance.create_virtual_capture(s.node_name.clone());
+                        self.create_virtual_capture(s.node_name.clone());
                     }
                 }
             }
             state::PlaybackMode::ApplicationAudio => {
                 if let Some(selected_source) = self.console_state.selected_app_source_id {
                     if let Some(s) = self.console_state.app_sources.iter().find(|s| s.id == selected_source) {
-                        self.pipewire_instance.create_virtual_capture(s.node_name.clone());
+                        self.create_virtual_capture(s.node_name.clone());
                     }
                 }
             }
@@ -80,14 +106,34 @@ impl App {
 }
 
 impl App {
+    fn set_critical_error(&mut self, err: String) {
+        self.critical_error = Some(if self.worker_healthy {
+            err
+        } else {
+            "AudioPass encountered an error, please restart to try again: ".to_owned() + &err
+        });
+    }
+
+    fn handle_worker_failure(&mut self, err: String) {
+        self.worker_healthy = false;
+        self.set_critical_error(err);
+        self.startup_in_progress = false;
+        self.playback_mode = state::PlaybackMode::None;
+        self.console_state = state::ConsoleState::default();
+        self.pipewire_instance.shutdown();
+    }
+}
+
+impl App {
     fn process_pipewire_events(&mut self) {
         loop {
             let event = match self.pipewire_instance.event_receiver.try_recv() {
                 Ok(event) => event,
                 Err(mpsc::TryRecvError::Empty) => break,
                 Err(mpsc::TryRecvError::Disconnected) => {
-                    self.startup_in_progress = false;
-                    self.critical_error.get_or_insert_with(|| "Error: Pipewire worker disconnected".to_string());
+                    if self.worker_healthy {
+                        self.handle_worker_failure("PipeWire worker disconnected".to_string());
+                    }
                     break;
                 }
             };
@@ -106,7 +152,7 @@ impl App {
                     {
                         self.console_state.selected_physical_source_id = None;
                         if self.playback_mode == state::PlaybackMode::PhysicalMic {
-                            self.pipewire_instance.drop_virtual_capture();
+                            self.drop_virtual_capture();
                         }
                     }
                 }
@@ -118,7 +164,7 @@ impl App {
                     {
                         self.console_state.selected_app_source_id = None;
                         if self.playback_mode == state::PlaybackMode::ApplicationAudio {
-                            self.pipewire_instance.drop_virtual_capture();
+                            self.drop_virtual_capture();
                         }
                     }
                 }
@@ -126,7 +172,11 @@ impl App {
                 PipewireEvent::VirtualCaptureReady { state: Ok(()) } => {}
 
                 PipewireEvent::VirtualCaptureReady { state: Err(err) } => {
-                    self.critical_error = Some(format!("Failed to create virtual capture: {err}"));
+                    if self.worker_healthy {
+                        self.set_critical_error(format!("Audio capture failed: {err}"));
+                        self.playback_mode = state::PlaybackMode::None;
+                        self.drop_virtual_capture();
+                    }
                 }
 
                 PipewireEvent::VirtualMicReady { state: Ok(()) } => {
@@ -137,15 +187,13 @@ impl App {
                     }
                 }
 
-                PipewireEvent::VirtualMicReady { state: Err(error) } => {
+                PipewireEvent::VirtualMicReady { state: Err(err) } => {
                     self.startup_in_progress = false;
-                    self.critical_error = Some(format!("Failed to create virtual microphone: {error}"));
+                    self.handle_worker_failure(format!("Virtual microphone error: {err}")); // request restart because virtual mic is a necessity
                 }
 
-                PipewireEvent::PipewireError { error } => {
-                    self.startup_in_progress = false;
-                    self.critical_error = Some(error);
-                }
+                PipewireEvent::PipewireError { error } => self.set_critical_error(error),
+                PipewireEvent::WorkerFailure { error } => self.handle_worker_failure(error),
             }
         }
     }

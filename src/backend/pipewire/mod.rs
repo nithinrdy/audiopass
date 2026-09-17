@@ -6,8 +6,8 @@ use eframe::egui::Context;
 pub use crate::backend::pipewire::worker::PipewireAppSource;
 pub use crate::backend::pipewire::worker::PipewirePhysicalSource;
 mod utils;
-mod virtual_mic;
 mod virtual_capture;
+mod virtual_mic;
 mod worker;
 
 static PIPEWIRE_INIT: Once = Once::new();
@@ -20,6 +20,7 @@ pub enum PipewireCommand {
 }
 pub enum PipewireEvent {
     PipewireError { error: String },
+    WorkerFailure { error: String },
     VirtualMicReady { state: Result<(), String> },
     VirtualCaptureReady { state: Result<(), String> },
     PhysicalSources { sources: Vec<PipewirePhysicalSource> },
@@ -63,7 +64,7 @@ pub fn start_pipewire_worker(cloned_egui_context: Context) -> Result<PipewireHoo
             let worker = match worker::PipewireWorkerWrapper::new(event_sender.clone()) {
                 Ok(w) => w,
                 Err(e) => {
-                    let _ = event_sender.send(PipewireEvent::PipewireError { error: e });
+                    let _ = event_sender.send(PipewireEvent::WorkerFailure { error: e });
                     return;
                 }
             };
@@ -86,12 +87,16 @@ impl PipewireHook {
             .map_err(|_| "Failed to send virtual microphone creation request to Pipewire worker".to_string())
     }
 
-    pub fn create_virtual_capture(&mut self, selected_node_name: String) {
-        let _ = self.command_sender.send(PipewireCommand::CreateVirtualCapture { selected_node_name });
+    pub fn create_virtual_capture(&mut self, selected_node_name: String) -> Result<(), String> {
+        self.command_sender
+            .send(PipewireCommand::CreateVirtualCapture { selected_node_name })
+            .map_err(|_| "Failed to send virtual capture creation request to Pipewire worker".to_string())
     }
 
-    pub fn drop_virtual_capture(&mut self) {
-        let _ = self.command_sender.send(PipewireCommand::DropVirtualCapture);
+    pub fn drop_virtual_capture(&mut self) -> Result<(), String> {
+        self.command_sender
+            .send(PipewireCommand::DropVirtualCapture)
+            .map_err(|_| "Failed to send virtual capture drop request to Pipewire worker".to_string())
     }
 
     pub fn shutdown(&mut self) {

@@ -2,6 +2,7 @@ use crate::ui::{self, style};
 use eframe::egui::{self, Align, FontId, RichText, Stroke, TextFormat};
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
+    let mut selected_node = None;
     ui.horizontal(|ui| {
         ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::NONE;
         ui.label(RichText::new("Selected Application").size(16.0));
@@ -127,11 +128,14 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                             }
 
                             if ui.selectable_value(&mut app.console_state.selected_app_source_id, Some(s.id), option_label).changed() {
-                                app.pipewire_instance.create_virtual_capture(s.node_name.clone());
+                                selected_node = Some(s.node_name.clone());
                             }
                         }
                     });
             });
         });
     });
+    if let Some(node_name) = selected_node {
+        app.create_virtual_capture(node_name);
+    }
 }

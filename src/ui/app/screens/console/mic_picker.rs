@@ -3,6 +3,7 @@ use eframe::egui::{self, RichText, Stroke};
 use crate::ui::{self, style};
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
+    let mut selected_node = None;
     ui.label(RichText::new("Selected Physical Mic").size(16.0));
     ui.add_space(2.0);
     ui.horizontal(|ui| {
@@ -31,12 +32,22 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                         ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::new(1.0, style::ACCENT);
 
                         for s in &app.console_state.physical_sources {
-                            if ui.selectable_value(&mut app.console_state.selected_physical_source_id, Some(s.id), RichText::new(&s.description).color(style::PRIMARY_TEXT).size(16.0)).changed() {
-                                app.pipewire_instance.create_virtual_capture(s.node_name.clone());
+                            if ui
+                                .selectable_value(
+                                    &mut app.console_state.selected_physical_source_id,
+                                    Some(s.id),
+                                    RichText::new(&s.description).color(style::PRIMARY_TEXT).size(16.0),
+                                )
+                                .changed()
+                            {
+                                selected_node = Some(s.node_name.clone());
                             }
                         }
                     });
             });
         });
     });
+    if let Some(node_name) = selected_node {
+        app.create_virtual_capture(node_name);
+    }
 }

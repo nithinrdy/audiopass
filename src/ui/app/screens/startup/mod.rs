@@ -20,17 +20,14 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
 
         if ui
             .add_enabled(
-                !app.startup_in_progress && app.critical_error.is_none(),
+                app.worker_healthy && !app.startup_in_progress && app.critical_error.is_none(),
                 Button::new(RichText::new(if app.startup_in_progress { "Starting…" } else { "Continue" }).color(style::CONTRAST_TEXT).size(18.0))
                     .fill(style::ACCENT)
                     .min_size(egui::Vec2 { x: 20.0, y: 40.0 }),
             )
             .clicked()
         {
-            match app.pipewire_instance.create_virtual_mic() {
-                Ok(()) => app.startup_in_progress = true,
-                Err(error) => app.critical_error = Some(error),
-            }
+            app.create_virtual_mic();
         }
 
         if let Some(error) = app.critical_error.as_ref() {
