@@ -23,6 +23,7 @@ pub struct App {
 
     playback_mode: state::PlaybackMode,
     console_state: state::ConsoleState,
+    about_state: state::AboutState,
 
     critical_error: Option<String>,
     datastore: datastore::DatastoreManager,
@@ -42,6 +43,7 @@ impl App {
             active_screen: None,
             pipewire_instance: pw_instance,
             console_state: state::ConsoleState::default(),
+            about_state: state::AboutState::default(),
             playback_mode: state::PlaybackMode::None,
             critical_error: None,
             datastore: datastore::DatastoreManager::new(),

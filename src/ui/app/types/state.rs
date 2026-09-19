@@ -1,4 +1,7 @@
-use crate::backend::pipewire::{PipewireAppSource, PipewirePhysicalSource};
+use crate::{
+    backend::pipewire::{PipewireAppSource, PipewirePhysicalSource},
+    ui::app::screens::about::LegalDoc,
+};
 
 #[derive(PartialEq)]
 pub enum PlaybackMode {
@@ -20,4 +23,14 @@ pub struct ConsoleState {
     pub selected_physical_source_id: Option<u32>,
     pub app_sources: Vec<PipewireAppSource>,
     pub selected_app_source_id: Option<u32>,
+}
+
+pub struct AboutState {
+    pub selected_doc: LegalDoc,
+}
+
+impl Default for AboutState {
+    fn default() -> Self {
+        AboutState { selected_doc: LegalDoc::License }
+    }
 }

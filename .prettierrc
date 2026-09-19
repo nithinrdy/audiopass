@@ -1,0 +1,11 @@
+{
+  "overrides": [
+    {
+      "files": ["LICENSE", "PRIVACY", "THIRD_PARTY"],
+      "options": {
+        "parser": "markdown",
+        "proseWrap": "preserve"
+      }
+    }
+  ]
+}

@@ -1,9 +1,11 @@
 [package]
 name = "audiopass"
 version = "0.1.0"
-description = "AudioPass is a Linux desktop app that plays local audio files through a virtual microphone."
+description = "AudioPass is a Linux desktop app that plays local audio through a virtual microphone."
+license = "MIT"
 authors = ["Vishnu Nithin Reddy"]
 edition = "2024"
+publish = false
 
 
 [profile.dev]
@@ -33,4 +35,5 @@ tokio = { version = "1.50.0", features = [
   "time",
 ] }
 egui-phosphor = { version = "0.13.0" }
-rodio = { version = "0.22.2" }
+# not used until local playback is good to go, just complicates third party notices till then
+# rodio = { version = "0.22.2" }

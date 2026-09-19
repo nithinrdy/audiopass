@@ -1,0 +1,21 @@
+AudioPass Privacy Policy
+
+Effective date: September 17, 2026
+
+AudioPass is designed to process audio locally on your device. It does not collect analytics, send telemetry, upload microphone input, upload local audio files, or collect any personal information.
+
+Local Audio Processing
+
+AudioPass can read locally running applications and can route their audio output, or your physical microphone input, through a PipeWire virtual microphone that AudioPass creates. This happens locally on your device and as per your selection.
+
+Network Use
+
+AudioPass does not require network access for its core features. If you leave the app through an external link (homepage, repository), the destination webpages may have their own separate privacy policies.
+
+Third-Party Components
+
+AudioPass includes third-party software components. Their license notices are available in the app's third-party notices (in the app's "About" section and alongside the source code on GitHub in "THIRD_PARTY").
+
+Questions?
+
+Visit https://github.com/nithinrdy/audiopass to submit an issue or start a discussion.

@@ -1,5 +1,5 @@
 use crate::ui::{App, app::screens::MainScreen, style};
-use eframe::egui::{self, Button, CornerRadius, RichText};
+use eframe::egui::{self, Button, Color32, CornerRadius, RichText};
 
 const TABS: [&str; 3] = ["Console", "Help", "About"];
 
@@ -15,21 +15,30 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 _ => unreachable!("unknown sidebar tab: {tab}"),
             };
 
+            let icon_for_tab = match tab {
+                "Console" => egui_phosphor::regular::SLIDERS,
+                "Help" => egui_phosphor::regular::QUESTION,
+                "About" => egui_phosphor::regular::FILES,
+                _ => unreachable!("unknown sidebar tab: {tab}"),
+            };
+
+            let is_active_tab = app.active_screen == Some(screen_for_tab);
+            let text_color = if is_active_tab { style::CONTRAST_TEXT } else { style::PRIMARY_TEXT };
+            let bg_color = if is_active_tab { style::ACCENT } else { style::SECONDARY_BACKGROUND };
+
             let clicked = ui
-                .add(
-                    Button::new(
-                        RichText::new(tab)
-                            .color(if app.active_screen == Some(screen_for_tab.clone()) {
-                                style::CONTRAST_TEXT
-                            } else {
-                                style::PRIMARY_TEXT
-                            })
-                            .size(18.0),
+                .scope(|ui| {
+                    ui.spacing_mut().button_padding = egui::Vec2 { x: 12.0, y: 0.0 };
+                    ui.add(
+                        Button::new(RichText::new(tab).color(text_color).size(16.0))
+                            .left_text(RichText::new(icon_for_tab).color(text_color).size(24.0))
+                            .right_text(RichText::new(icon_for_tab).color(Color32::TRANSPARENT).size(24.0))
+                            .fill(bg_color)
+                            .min_size(egui::Vec2 { x: 20.0, y: 40.0 }),
                     )
-                    .fill(if app.active_screen == Some(screen_for_tab) { style::ACCENT } else { style::SECONDARY_BACKGROUND })
-                    .min_size(egui::Vec2 { x: 20.0, y: 40.0 }),
-                )
-                .clicked();
+                    .clicked()
+                })
+                .inner;
 
             if clicked {
                 match tab {

@@ -26,7 +26,7 @@ jobs:
           sudo apt-get install --yes libpipewire-0.3-dev libasound2-dev
 
       - name: Build AudioPass
-        run: cargo build --release
+        run: cargo build --release --locked
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

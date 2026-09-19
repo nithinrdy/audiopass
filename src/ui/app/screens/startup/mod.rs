@@ -33,7 +33,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
         if let Some(error) = app.critical_error.as_ref() {
             ui.add_space(16.0);
             ui.separator();
-            egui::ScrollArea::new([false, true]).max_height(160.0).show(ui, |ui| {
+            egui::ScrollArea::new([false, true]).id_salt("startup_error_message").max_height(160.0).show(ui, |ui| {
                 ui.label(RichText::new(error).color(style::DANGER).size(14.0));
             });
             ui.separator();
