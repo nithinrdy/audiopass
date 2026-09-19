@@ -12,6 +12,7 @@ jobs:
   build:
     name: Build AudioPass
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
 
     steps:
       - name: Check out repo
@@ -24,6 +25,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes libpipewire-0.3-dev libasound2-dev
+
+      - name: Install and run cargo-audit
+        run: cargo install cargo-audit --locked && cargo audit
 
       - name: Build AudioPass
         run: cargo build --release --locked

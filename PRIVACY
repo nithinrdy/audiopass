@@ -6,7 +6,7 @@ AudioPass is designed to process audio locally on your device. It does not colle
 
 Local Audio Processing
 
-AudioPass can read locally running applications and can route their audio output, or your physical microphone input, through a PipeWire virtual microphone that AudioPass creates. This happens locally on your device and as per your selection.
+AudioPass can read locally running applications and can route their audio output, or your physical microphone input, through a PipeWire virtual microphone that AudioPass creates. This happens locally on your device and as per your selection. Applications that pick up on the AudioPass virtual microphone's audio may handle that audio according to their own separate privacy policies.
 
 Network Use
 
