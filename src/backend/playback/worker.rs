@@ -12,13 +12,13 @@ impl PlaybackWorker {
     }
 
     pub fn run(&self) {
-        while let Ok(cmd) = self.command_receiver.recv() {
-            match cmd {
-                PlaybackCommand::Shutdown {} => {
-                    break;
-                }
-            }
-        }
+        // while let Ok(cmd) = self.command_receiver.recv() {
+        //     match cmd {
+        //         PlaybackCommand::Shutdown {} => {
+        //             break;
+        //         }
+        //     }
+        // }
     }
 }
 
