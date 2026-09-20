@@ -1,39 +1,8 @@
 use eframe::egui::{self, Button, RichText};
 
-use crate::ui::{self, style};
-use crate::utils::{LICENSE_TEXT, PRIVACY_TEXT, THIRD_PARTY_TEXT};
+use crate::ui::{self, app::types::state::LegalDoc, style};
 
 const EXTERNAL_LINKS: [(&str, &str); 2] = [("Homepage", "https://audiopass.nithinrdy.com"), ("Source Code", "https://github.com/nithinrdy/audiopass")];
-
-#[derive(PartialEq)]
-pub enum LegalDoc {
-    License,
-    ThirdParty,
-    Privacy,
-}
-
-impl LegalDoc {
-    pub fn iterable() -> [LegalDoc; 3] {
-        [Self::License, Self::ThirdParty, Self::Privacy]
-    }
-
-    pub fn get_label(&self) -> String {
-        (match self {
-            Self::License => "LICENSE",
-            Self::ThirdParty => "THIRD PARTY NOTICES",
-            Self::Privacy => "PRIVACY POLICY",
-        })
-        .to_string()
-    }
-
-    pub fn get_content(&self) -> &'static str {
-        match self {
-            Self::License => LICENSE_TEXT,
-            Self::ThirdParty => THIRD_PARTY_TEXT,
-            Self::Privacy => PRIVACY_TEXT,
-        }
-    }
-}
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
     ui.label(RichText::new(format!("AudioPass {}", env!("CARGO_PKG_VERSION"))).color(style::PRIMARY_TEXT).size(16.0));
