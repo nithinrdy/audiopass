@@ -116,7 +116,10 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                 "FIREFOX TABS SHOW UP IN THE DROPDOWN BUT DON'T HAVE THE RIGHT NAMES",
                 "Individual tabs show up separately in the dropdown, but sometimes they're labeled as \"AudioStream\" instead of using the tab name.\n\n\
                 This is a known issue with Firefox running on PipeWire systems (for example: https://bugzilla.mozilla.org/show_bug.cgi?id=1847824). \
-                Can happen when you mute a tab for a while, when you re-open a closed tab that was playing audio, and so on.",
+                Can happen when you mute a tab for a while, when you re-open a closed tab that was playing audio, and so on.\n\n\
+                Another potential issue is that, in case of multiple tabs, switching between them will still play audio from a single tab, \
+                because the app is designed to target the first tab it can find in the PipeWire registry by node name. \
+                This is a limitation, the only workaround is to have only one audio-playing tab active at a time right now.",
             );
         }
         HelpCategory::LocalFile => {
