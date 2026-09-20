@@ -14,53 +14,47 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
             let selected_app_source = app.console_state.app_sources.iter().find(|s| Some(s.id) == app.console_state.selected_app_source_id);
             let mut selected_app_label = egui::text::LayoutJob::default();
-            match selected_app_source {
-                Some(app) => {
-                    selected_app_label.append(
-                        if app.info__state {
-                            egui_phosphor::regular::WAVEFORM
-                        } else {
-                            egui_phosphor::regular::WAVEFORM_SLASH
-                        },
-                        0.0,
-                        TextFormat {
-                            font_id: FontId::proportional(24.0),
-                            color: if app.info__state { style::ACCENT } else { style::SECONDARY_TEXT },
-                            valign: Align::Center,
-                            ..Default::default()
-                        },
-                    );
-                    selected_app_label.append(
-                        &app.info__props__application_name,
-                        12.0,
-                        TextFormat {
-                            font_id: FontId::proportional(16.0),
-                            color: style::PRIMARY_TEXT,
-                            valign: Align::Center,
-                            ..Default::default()
-                        },
-                    );
-                    match app.info__props__media_name.as_ref() {
-                        Some(n) => {
-                            if *n == app.info__props__application_name {
-                                // Spotify (and maybe other apps) has media.name the same as application.name?
-                            } else {
-                                selected_app_label.append(
-                                    &format!("({})", n),
-                                    8.0,
-                                    TextFormat {
-                                        font_id: FontId::proportional(16.0),
-                                        color: style::SECONDARY_TEXT,
-                                        valign: Align::Center,
-                                        ..Default::default()
-                                    },
-                                );
-                            }
-                        }
-                        None => {}
+            if let Some(app) = selected_app_source {
+                selected_app_label.append(
+                    if app.info__state {
+                        egui_phosphor::regular::WAVEFORM
+                    } else {
+                        egui_phosphor::regular::WAVEFORM_SLASH
+                    },
+                    0.0,
+                    TextFormat {
+                        font_id: FontId::proportional(24.0),
+                        color: if app.info__state { style::ACCENT } else { style::SECONDARY_TEXT },
+                        valign: Align::Center,
+                        ..Default::default()
+                    },
+                );
+                selected_app_label.append(
+                    &app.info__props__application_name,
+                    12.0,
+                    TextFormat {
+                        font_id: FontId::proportional(16.0),
+                        color: style::PRIMARY_TEXT,
+                        valign: Align::Center,
+                        ..Default::default()
+                    },
+                );
+                if let Some(n) = app.info__props__media_name.as_ref() {
+                    if *n == app.info__props__application_name {
+                        // Spotify (and maybe other apps) has media.name the same as application.name?
+                    } else {
+                        selected_app_label.append(
+                            &format!("({})", n),
+                            8.0,
+                            TextFormat {
+                                font_id: FontId::proportional(16.0),
+                                color: style::SECONDARY_TEXT,
+                                valign: Align::Center,
+                                ..Default::default()
+                            },
+                        );
                     }
                 }
-                _ => {}
             };
 
             ui.scope(|ui| {
@@ -107,24 +101,21 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
                                     ..Default::default()
                                 },
                             );
-                            match s.info__props__media_name.as_ref() {
-                                Some(n) => {
-                                    if *n == s.info__props__application_name {
-                                        // Spotify (and maybe other apps) has media.name the same as application.name?
-                                    } else {
-                                        option_label.append(
-                                            &format!("({})", n),
-                                            8.0,
-                                            TextFormat {
-                                                font_id: FontId::proportional(16.0),
-                                                color: style::SECONDARY_TEXT,
-                                                valign: Align::Center,
-                                                ..Default::default()
-                                            },
-                                        );
-                                    }
+                            if let Some(n) = s.info__props__media_name.as_ref() {
+                                if *n == s.info__props__application_name {
+                                    // Spotify (and maybe other apps) has media.name the same as application.name?
+                                } else {
+                                    option_label.append(
+                                        &format!("({})", n),
+                                        8.0,
+                                        TextFormat {
+                                            font_id: FontId::proportional(16.0),
+                                            color: style::SECONDARY_TEXT,
+                                            valign: Align::Center,
+                                            ..Default::default()
+                                        },
+                                    );
                                 }
-                                None => {}
                             }
 
                             if ui.selectable_value(&mut app.console_state.selected_app_source_id, Some(s.id), option_label).changed() {

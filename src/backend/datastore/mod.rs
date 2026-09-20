@@ -60,10 +60,10 @@ impl DatastoreManager {
             }
         };
 
-        return match self.save_sender.send(Some(serialized)) {
+        match self.save_sender.send(Some(serialized)) {
             Ok(_) => Ok(()),
-            Err(_) => Err(format!("Failed to queue AudioPass preferences save: save worker stopped")),
-        };
+            Err(_) => Err("Failed to queue AudioPass preferences save: save worker stopped".to_string()),
+        }
     }
 }
 

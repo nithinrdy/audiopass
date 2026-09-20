@@ -90,18 +90,16 @@ impl App {
         match mode {
             state::PlaybackMode::None => {}
             state::PlaybackMode::PhysicalMic => {
-                if let Some(selected_source) = self.console_state.selected_physical_source_id {
-                    if let Some(s) = self.console_state.physical_sources.iter().find(|s| s.id == selected_source) {
+                if let Some(selected_source) = self.console_state.selected_physical_source_id
+                    && let Some(s) = self.console_state.physical_sources.iter().find(|s| s.id == selected_source) {
                         self.create_virtual_capture(s.node_name.clone());
                     }
-                }
             }
             state::PlaybackMode::ApplicationAudio => {
-                if let Some(selected_source) = self.console_state.selected_app_source_id {
-                    if let Some(s) = self.console_state.app_sources.iter().find(|s| s.id == selected_source) {
+                if let Some(selected_source) = self.console_state.selected_app_source_id
+                    && let Some(s) = self.console_state.app_sources.iter().find(|s| s.id == selected_source) {
                         self.create_virtual_capture(s.node_name.clone());
                     }
-                }
             }
             state::PlaybackMode::LocalFile => {}
         }

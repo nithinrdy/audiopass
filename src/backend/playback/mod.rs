@@ -52,7 +52,7 @@ impl PlaybackController {
     pub fn stop(&self) {}
 
     pub fn play_next(&mut self, track_list: &[track::Track]) {
-        if track_list.len() == 0 {
+        if track_list.is_empty() {
             return;
         }
 
@@ -72,7 +72,7 @@ impl PlaybackController {
     }
 
     pub fn play_previous(&mut self, track_list: &[track::Track]) {
-        if track_list.len() == 0 {
+        if track_list.is_empty() {
             return;
         }
 
@@ -95,11 +95,8 @@ impl PlaybackController {
 impl Drop for PlaybackController {
     fn drop(&mut self) {
         let _ = self.command_sender.send(PlaybackCommand::Shutdown);
-        match self._thread.take() {
-            Some(t) => {
-                let _ = t.join();
-            }
-            None => {}
+        if let Some(t) = self._thread.take() {
+            let _ = t.join();
         };
     }
 }

@@ -72,15 +72,15 @@ impl VirtualCapture {
                 // so rustfmt doesnt inline this
                 match new_state {
                     pipewire::stream::StreamState::Error(e) => {
-                        let _ = data.sender.send(PipewireEvent::VirtualCaptureReady { state: Err(e) });
+                        data.sender.send(PipewireEvent::VirtualCaptureReady { state: Err(e) });
                     }
                     pipewire::stream::StreamState::Paused => {
-                        let _ = data.sender.send(PipewireEvent::VirtualCaptureReady { state: Ok(()) });
+                        data.sender.send(PipewireEvent::VirtualCaptureReady { state: Ok(()) });
                     }
                     pipewire::stream::StreamState::Streaming => {
-                        let _ = data.sender.send(PipewireEvent::VirtualCaptureReady { state: Ok(()) });
+                        data.sender.send(PipewireEvent::VirtualCaptureReady { state: Ok(()) });
                     }
-                    _ => return,
+                    _ => (),
                 }
             })
             .process(|stream, data| {
@@ -148,7 +148,7 @@ impl VirtualCapture {
             pipewire::stream::StreamFlags::AUTOCONNECT | pipewire::stream::StreamFlags::MAP_BUFFERS | pipewire::stream::StreamFlags::RT_PROCESS,
             &mut ([match Pod::from_bytes(get_serialized_vec_for_pod()?.deref()) {
                 Some(p) => p,
-                None => return Err(format!("Failed to serialize libspa POD while creating virtual capture stream")),
+                None => return Err("Failed to serialize libspa POD while creating virtual capture stream".to_string()),
             }]),
         ) {
             Ok(_) => {}

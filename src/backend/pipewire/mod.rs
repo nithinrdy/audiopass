@@ -64,7 +64,7 @@ pub fn start_pipewire_worker(cloned_egui_context: Context) -> Result<PipewireHoo
             let worker = match worker::PipewireWorkerWrapper::new(event_sender.clone()) {
                 Ok(w) => w,
                 Err(e) => {
-                    let _ = event_sender.send(PipewireEvent::WorkerFailure { error: e });
+                    event_sender.send(PipewireEvent::WorkerFailure { error: e });
                     return;
                 }
             };
@@ -101,11 +101,8 @@ impl PipewireHook {
 
     pub fn shutdown(&mut self) {
         let _ = self.command_sender.send(PipewireCommand::Shutdown);
-        match self.thread.take() {
-            Some(t) => {
-                let _ = t.join();
-            }
-            None => {}
+        if let Some(t) = self.thread.take() {
+            let _ = t.join();
         };
     }
 }

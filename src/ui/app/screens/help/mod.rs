@@ -128,7 +128,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
 fn help_section(ui: &mut egui::Ui, title: &str, body: &str) {
     egui::Frame::default().show(ui, |ui| {
         ui.set_min_width(ui.available_width());
-        if title.len() > 0 {
+        if !title.is_empty() {
             ui.label(RichText::new(title).color(style::ACCENT).size(16.0).extra_letter_spacing(0.5));
             ui.add_space(4.0);
         }

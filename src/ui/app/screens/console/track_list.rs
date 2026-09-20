@@ -24,7 +24,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
 
     ui.add_space(8.0);
 
-    if app.datastore.tracks().get().len() == 0 {
+    if app.datastore.tracks().get().is_empty() {
         ui.vertical_centered(|ui| {
             ui.label(RichText::new("No tracks yet.").size(20.0).color(style::SECONDARY_TEXT));
         });
