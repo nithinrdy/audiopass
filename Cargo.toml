@@ -23,7 +23,7 @@ eframe = { version = "0.35" } # TODO: Upgrade after egui-phosphor is made compat
 # 0_3_49 lets me use buffer.requested() for frame count pipewire recommends when writing to source stream (src/backend/pipewire/virtual_mic.rs)
 # (and >=0_3_44 lets me use pipewire::keys::TARGET_OBJECT to create stream targeting physical mic (or any node I guess))
 pipewire = { version = "0.10.1", features = ["v0_3_49"] }
-ringbuf = { version = "0.5.1" }
+ringbuf = { version = "0.5.2" }
 rfd = { version = "0.17.2" }
 uuid = { version = "=1.26.0", features = ["serde", "v4"] }
 serde = { version = "1.0.229" }

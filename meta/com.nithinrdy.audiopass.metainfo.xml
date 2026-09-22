@@ -15,4 +15,9 @@
   </description>
   
   <launchable type="desktop-id">com.nithinrdy.audiopass.desktop</launchable>
+  <url type="homepage">https://audiopass.nithinrdy.com</url>
+  <content_rating type="oars-1.0" />
+  <developer id="com.nithinrdy">
+    <name>Vishnu Nithin Reddy</name>
+  </developer>
 </component>
