@@ -1,9 +1,9 @@
-name: Build
+name: Build and draft release on tag creation
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,6 +13,8 @@ jobs:
     name: Build AudioPass
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: write
 
     steps:
       - name: Check out repo
@@ -37,9 +39,12 @@ jobs:
           chmod +x package/audiopass package/install.sh package/uninstall.sh
           tar -czf audiopass.tar.gz -C package .
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          path: audiopass.tar.gz
-          archive: false
-          retention-days: 1
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" audiopass.tar.gz \
+            --draft \
+            --fail-on-no-commits \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
