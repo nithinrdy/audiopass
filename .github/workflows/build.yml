@@ -26,15 +26,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes libpipewire-0.3-dev libasound2-dev
 
-      - name: Install and run cargo-audit
-        run: cargo install cargo-audit --locked && cargo audit
-
       - name: Build AudioPass
         run: cargo build --release --locked
+
+      - name: Create package
+        run: |
+          mkdir package
+          cp target/release/audiopass LICENSE THIRD_PARTY PRIVACY package/
+          cp -aT meta/ package/
+          chmod +x package/audiopass package/install.sh package/uninstall.sh
+          tar -czf audiopass.tar.gz -C package .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: audiopass
-          path: target/release/audiopass
+          path: audiopass.tar.gz
+          archive: false
           retention-days: 1

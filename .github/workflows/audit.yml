@@ -1,0 +1,22 @@
+name: Audit
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  audit:
+    name: Audit dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Install and run cargo-audit
+        run: cargo install cargo-audit --locked && cargo audit

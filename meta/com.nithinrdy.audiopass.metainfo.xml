@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.nithinrdy.audiopass</id>
+  
+  <name>AudioPass</name>
+  <summary>Play local audio through a virtual microphone</summary>
+  
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  
+  <description>
+    <p>
+      AudioPass is a Linux desktop app that plays local audio through a virtual microphone. Lets calls, recordings, video games and more capture your selected local audio playback.
+    </p>
+  </description>
+  
+  <launchable type="desktop-id">com.nithinrdy.audiopass.desktop</launchable>
+</component>

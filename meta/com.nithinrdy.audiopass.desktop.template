@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+
+Name=AudioPass
+Comment=Play local audio through a virtual microphone
+Categories=AudioVideo;Mixer;
+
+Icon=com.nithinrdy.audiopass
+
+Terminal=false
