@@ -129,4 +129,25 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
     if let Some(node_name) = selected_node {
         app.create_virtual_capture(node_name);
     }
+
+    ui.add_space(12.0);
+    ui.label(RichText::new(format!("Gain [{:.2}x]", app.console_state.app_audio_gain as f32 / 100.0)).size(16.0));
+    let gain_changed = ui
+        .scope(|ui| {
+            ui.spacing_mut().slider_width = ui.available_width();
+            ui.style_mut().visuals.selection.bg_fill = style::ACCENT;
+            ui.add(
+                egui::Slider::new(&mut app.console_state.app_audio_gain, 0..=200)
+                    .show_value(false)
+                    .handle_shape(egui::style::HandleShape::Circle)
+                    .trailing_fill(true),
+            )
+            .changed()
+        })
+        .inner;
+    if gain_changed {
+        app.pipewire_instance.set_gain(app.console_state.app_audio_gain);
+    }
+
+    ui.add_space(4.0);
 }

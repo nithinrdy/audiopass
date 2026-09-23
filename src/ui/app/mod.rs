@@ -45,7 +45,7 @@ impl App {
             pipewire_instance: pw_instance,
             console_state: state::ConsoleState::default(),
             about_state: state::AboutState::default(),
-            help_state: state::HelpState:: default(),
+            help_state: state::HelpState::default(),
             playback_mode: state::PlaybackMode::None,
             critical_error: None,
             datastore: datastore::DatastoreManager::new(),
@@ -87,19 +87,24 @@ impl App {
             return;
         }
 
+        self.pipewire_instance
+            .set_gain(if mode == state::PlaybackMode::ApplicationAudio { self.console_state.app_audio_gain } else { 100 });
+
         match mode {
             state::PlaybackMode::None => {}
             state::PlaybackMode::PhysicalMic => {
                 if let Some(selected_source) = self.console_state.selected_physical_source_id
-                    && let Some(s) = self.console_state.physical_sources.iter().find(|s| s.id == selected_source) {
-                        self.create_virtual_capture(s.node_name.clone());
-                    }
+                    && let Some(s) = self.console_state.physical_sources.iter().find(|s| s.id == selected_source)
+                {
+                    self.create_virtual_capture(s.node_name.clone());
+                }
             }
             state::PlaybackMode::ApplicationAudio => {
                 if let Some(selected_source) = self.console_state.selected_app_source_id
-                    && let Some(s) = self.console_state.app_sources.iter().find(|s| s.id == selected_source) {
-                        self.create_virtual_capture(s.node_name.clone());
-                    }
+                    && let Some(s) = self.console_state.app_sources.iter().find(|s| s.id == selected_source)
+                {
+                    self.create_virtual_capture(s.node_name.clone());
+                }
             }
             state::PlaybackMode::LocalFile => {}
         }

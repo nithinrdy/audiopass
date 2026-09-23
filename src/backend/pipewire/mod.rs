@@ -1,5 +1,9 @@
 use std::collections::HashMap;
-use std::sync::{Once, mpsc::Sender};
+use std::sync::{
+    Arc, Once,
+    atomic::{AtomicU32, Ordering},
+    mpsc::Sender,
+};
 
 use eframe::egui::Context;
 
@@ -42,6 +46,7 @@ impl CustomEventSender {
 pub struct PipewireHook {
     command_sender: pipewire::channel::Sender<PipewireCommand>,
     pub event_receiver: std::sync::mpsc::Receiver<PipewireEvent>,
+    gain_percent: Arc<AtomicU32>,
     thread: Option<std::thread::JoinHandle<()>>,
 }
 
@@ -52,6 +57,8 @@ pub fn start_pipewire_worker(cloned_egui_context: Context) -> Result<PipewireHoo
     let (command_sender, command_receiver) = pipewire::channel::channel::<PipewireCommand>();
     // pipewire to app
     let (event_sender, event_receiver) = std::sync::mpsc::channel::<PipewireEvent>();
+    let gain_percent = Arc::new(AtomicU32::new(100));
+    let worker_gain_percent = gain_percent.clone();
 
     let thread = std::thread::Builder::new()
         .name("audiopass-pipewire".to_string())
@@ -61,7 +68,7 @@ pub fn start_pipewire_worker(cloned_egui_context: Context) -> Result<PipewireHoo
                 egui_context: cloned_egui_context,
             };
 
-            let worker = match worker::PipewireWorkerWrapper::new(event_sender.clone()) {
+            let worker = match worker::PipewireWorkerWrapper::new(event_sender.clone(), worker_gain_percent) {
                 Ok(w) => w,
                 Err(e) => {
                     event_sender.send(PipewireEvent::WorkerFailure { error: e });
@@ -76,6 +83,7 @@ pub fn start_pipewire_worker(cloned_egui_context: Context) -> Result<PipewireHoo
     Ok(PipewireHook {
         command_sender,
         event_receiver,
+        gain_percent,
         thread: Some(thread),
     })
 }
@@ -97,6 +105,10 @@ impl PipewireHook {
         self.command_sender
             .send(PipewireCommand::DropVirtualCapture)
             .map_err(|_| "Failed to send virtual capture drop request to Pipewire worker".to_string())
+    }
+
+    pub fn set_gain(&self, gain: u32) {
+        self.gain_percent.store(gain.max(0).min(200), Ordering::Relaxed);
     }
 
     pub fn shutdown(&mut self) {

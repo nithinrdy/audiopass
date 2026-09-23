@@ -9,7 +9,7 @@ use std::{
     ops::Deref,
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU32, Ordering},
     },
 };
 
@@ -23,6 +23,7 @@ struct AdditionalData {
     audio_consumer: HeapCons<f32>,
     output_sample_buffer: Vec<f32>,
     clear_stale_ring_samples: Arc<AtomicBool>,
+    gain_percent: Arc<AtomicU32>,
 }
 
 pub struct VirtualMic {
@@ -37,7 +38,13 @@ impl Drop for VirtualMic {
 }
 
 impl VirtualMic {
-    pub fn new(pw_core: pipewire::core::CoreRc, state_change_sender: CustomEventSender, audio_consumer: HeapCons<f32>, clear_stale_ring_samples: Arc<AtomicBool>) -> Result<Self, String> {
+    pub fn new(
+        pw_core: pipewire::core::CoreRc,
+        state_change_sender: CustomEventSender,
+        audio_consumer: HeapCons<f32>,
+        clear_stale_ring_samples: Arc<AtomicBool>,
+        gain_percent: Arc<AtomicU32>,
+    ) -> Result<Self, String> {
         // pre-allocate vec so dont have to allocate inside process() closure for rt-safety
         let output_sample_buffer = vec![0.0; constants::AUDIOPASS_MIC_RING_CAPACITY_IN_SAMPLES];
 
@@ -67,6 +74,7 @@ impl VirtualMic {
                 audio_consumer,
                 output_sample_buffer,
                 clear_stale_ring_samples,
+                gain_percent,
             })
             .state_changed(|_stream, data, _old_state, new_state| {
                 // so rustfmt doesnt inline this
@@ -121,9 +129,10 @@ impl VirtualMic {
 
                     let popped_sample_count = data.audio_consumer.pop_slice(&mut data.output_sample_buffer[..sample_count_to_pop_from_ring]);
 
+                    let gain = data.gain_percent.load(Ordering::Relaxed) as f32 / 100.0;
                     for sample_idx in 0..popped_sample_count {
                         let byte_idx = sample_idx * constants::AUDIOPASS_BYTES_PER_SAMPLE;
-                        bytes_in_buffer[byte_idx..(byte_idx + constants::AUDIOPASS_BYTES_PER_SAMPLE)].copy_from_slice(&data.output_sample_buffer[sample_idx].to_le_bytes());
+                        bytes_in_buffer[byte_idx..(byte_idx + constants::AUDIOPASS_BYTES_PER_SAMPLE)].copy_from_slice(&(data.output_sample_buffer[sample_idx] * gain).to_le_bytes());
                     }
 
                     // fill with silence if ring didnt have enough complete frames.

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use pipewire::context::ContextRc;
 use pipewire::core::CoreRc;
@@ -60,10 +60,11 @@ struct PipewireWorker {
     registry_data: PipewireRegistryData,
     audio_ring: Arc<HeapRb<f32>>,
     clear_stale_ring_samples: Arc<AtomicBool>, // 100ms of stale audio is no big deal, just an excuse to try out atomics
+    gain_percent: Arc<AtomicU32>,
 }
 
 impl PipewireWorkerWrapper {
-    pub fn new(event_sender: CustomEventSender) -> Result<Self, String> {
+    pub fn new(event_sender: CustomEventSender, gain_percent: Arc<AtomicU32>) -> Result<Self, String> {
         let properties = {
             // https://docs.pipewire.org/src_2pipewire_2keys_8h.html
             pipewire::properties::properties! {
@@ -96,6 +97,7 @@ impl PipewireWorkerWrapper {
                     registry_data: PipewireRegistryData::default(),
                     audio_ring: Arc::new(HeapRb::new(constants::AUDIOPASS_MIC_RING_CAPACITY_IN_SAMPLES)),
                     clear_stale_ring_samples: Arc::new(AtomicBool::new(false)),
+                    gain_percent,
                 }
             })),
         })
@@ -148,67 +150,69 @@ impl PipewireWorkerWrapper {
         let _registry_listener = registry
             .add_listener_local()
             // https://docs.pipewire.org/structpw__registry__events.html#a37bd7089a7a07d7154e111e67b25f96c
-            .global(move |global| if global.type_ == ObjectType::Node {
-                if let Some(physical_source) = physical_source_from_global(global) {
-                    let physical_sources = &mut add_closure_worker.borrow_mut().registry_data.physical_sources;
-                    physical_sources.push(physical_source);
-                    add_closure_event_sender.send(PipewireEvent::PhysicalSources { sources: physical_sources.clone() });
-                } else if let Some(app_source) = app_source_from_global(global) {
-                    let id = app_source.id;
+            .global(move |global| {
+                if global.type_ == ObjectType::Node {
+                    if let Some(physical_source) = physical_source_from_global(global) {
+                        let physical_sources = &mut add_closure_worker.borrow_mut().registry_data.physical_sources;
+                        physical_sources.push(physical_source);
+                        add_closure_event_sender.send(PipewireEvent::PhysicalSources { sources: physical_sources.clone() });
+                    } else if let Some(app_source) = app_source_from_global(global) {
+                        let id = app_source.id;
 
-                    let node: Node = match closure_registry.bind(global) {
-                        Ok(node) => node,
-                        Err(err) => {
-                            add_closure_event_sender.send(PipewireEvent::PipewireError {
-                                error: format!("Failed to bind node {id}: {err}"),
-                            });
-                            return;
-                        }
-                    };
+                        let node: Node = match closure_registry.bind(global) {
+                            Ok(node) => node,
+                            Err(err) => {
+                                add_closure_event_sender.send(PipewireEvent::PipewireError {
+                                    error: format!("Failed to bind node {id}: {err}"),
+                                });
+                                return;
+                            }
+                        };
 
-                    let node_listener_closure_worker = Rc::clone(&add_closure_worker);
-                    let node_listener_closure_event_sender = add_closure_event_sender.clone();
+                        let node_listener_closure_worker = Rc::clone(&add_closure_worker);
+                        let node_listener_closure_event_sender = add_closure_event_sender.clone();
 
-                    let listener = node
-                        .add_listener_local()
-                        .info(move |info| {
-                            if info.change_mask().contains(NodeChangeMask::STATE) {
-                                let app_sources = &mut node_listener_closure_worker.borrow_mut().registry_data.app_sources;
-                                let source_to_modify = app_sources.get_mut(&id);
+                        let listener = node
+                            .add_listener_local()
+                            .info(move |info| {
+                                if info.change_mask().contains(NodeChangeMask::STATE) {
+                                    let app_sources = &mut node_listener_closure_worker.borrow_mut().registry_data.app_sources;
+                                    let source_to_modify = app_sources.get_mut(&id);
 
-                                if let Some(s) = source_to_modify {
-                                    s.info__state = match info.state() {
-                                        NodeState::Running => true,
-                                        _ => false,
+                                    if let Some(s) = source_to_modify {
+                                        s.info__state = match info.state() {
+                                            NodeState::Running => true,
+                                            _ => false,
+                                        };
+
+                                        node_listener_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() });
+                                    }
+                                }
+
+                                if info.change_mask().contains(NodeChangeMask::PROPS) {
+                                    let Some(props) = info.props() else {
+                                        return;
                                     };
 
-                                    node_listener_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() });
+                                    let app_sources = &mut node_listener_closure_worker.borrow_mut().registry_data.app_sources;
+                                    let source_to_modify = app_sources.get_mut(&id);
+                                    if let Some(s) = source_to_modify {
+                                        s.info__props__application_name = props.get("application.name").map(|n| n.to_string()).unwrap_or(s.info__props__application_name.clone());
+                                        s.info__props__application_process_binary = props.get("application.process.binary").map(|n| n.to_string());
+                                        s.info__props__media_name = props.get("media.name").map(|n| n.to_string());
+
+                                        node_listener_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() });
+                                    };
                                 }
-                            }
+                            })
+                            .register();
 
-                            if info.change_mask().contains(NodeChangeMask::PROPS) {
-                                let Some(props) = info.props() else {
-                                    return;
-                                };
-
-                                let app_sources = &mut node_listener_closure_worker.borrow_mut().registry_data.app_sources;
-                                let source_to_modify = app_sources.get_mut(&id);
-                                if let Some(s) = source_to_modify {
-                                    s.info__props__application_name = props.get("application.name").map(|n| n.to_string()).unwrap_or(s.info__props__application_name.clone());
-                                    s.info__props__application_process_binary = props.get("application.process.binary").map(|n| n.to_string());
-                                    s.info__props__media_name = props.get("media.name").map(|n| n.to_string());
-
-                                    node_listener_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() });
-                                };
-                            }
-                        })
-                        .register();
-
-                    // just to persist listener and registry binding (dropped in global_remove())
-                    add_closure_watched_app_nodes.borrow_mut().insert(id, WatchedAppNode { _listener: listener, _node: node });
-                    let app_sources = &mut add_closure_worker.borrow_mut().registry_data.app_sources;
-                    app_sources.insert(app_source.id, app_source);
-                    add_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() }); // probably not necessary because event_senders inside Node _listener will also emit at least once, but still
+                        // just to persist listener and registry binding (dropped in global_remove())
+                        add_closure_watched_app_nodes.borrow_mut().insert(id, WatchedAppNode { _listener: listener, _node: node });
+                        let app_sources = &mut add_closure_worker.borrow_mut().registry_data.app_sources;
+                        app_sources.insert(app_source.id, app_source);
+                        add_closure_event_sender.send(PipewireEvent::AppSources { sources: app_sources.clone() }); // probably not necessary because event_senders inside Node _listener will also emit at least once, but still
+                    }
                 }
             })
             .global_remove(move |removed_id| {
@@ -248,6 +252,7 @@ impl PipewireWorker {
                     event_sender.clone(),
                     persistent_audio_consumer,
                     self.clear_stale_ring_samples.clone(),
+                    self.gain_percent.clone(),
                 )?);
             }
             PipewireCommand::CreateVirtualCapture { selected_node_name } => {
