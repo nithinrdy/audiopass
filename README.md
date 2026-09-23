@@ -6,6 +6,12 @@ AudioPass is a Linux desktop app that plays local audio through a virtual microp
 - any locally running application playing audio
 - _[work-in-progress]_ any local audio files
 
+<img width="2220" height="1756" alt="audiopass-screenshot" src="https://github.com/user-attachments/assets/dc6ea65f-e8cf-40fa-ad57-8164cd32f74c" />
+
+## Download
+
+Check out the [Releases](https://github.com/nithinrdy/audiopass/releases) tab and download the latest archive. A short README is included, contains everything you need to get started. The Help screen in the app explains all the core modes. Except for the external links to the homepage and to this repository, AudioPass is fully offline-only.
+
 ## Minimum Requirements
 
 AudioPass has the following minimum requirements:
