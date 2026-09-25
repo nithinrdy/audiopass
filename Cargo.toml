@@ -19,10 +19,8 @@ panic = "abort"
 strip = "symbols"
 
 [dependencies]
-eframe = { version = "0.35" } # TODO: Upgrade after egui-phosphor is made compatible with latest version
-# 0_3_49 lets me use buffer.requested() for frame count pipewire recommends when writing to source stream (src/backend/pipewire/virtual_mic.rs)
-# (and >=0_3_44 lets me use pipewire::keys::TARGET_OBJECT to create stream targeting physical mic (or any node I guess))
-pipewire = { version = "0.10.1", features = ["v0_3_49"] }
+eframe = { version = "0.36" }
+pipewire = { version = "0.10.1", features = ["v0_3_49"] } # 0_3_49 for buffer.requested() for frame count value (backend/pipewire/virtual_mic.rs)
 ringbuf = { version = "0.5.2" }
 rfd = { version = "0.17.2" }
 uuid = { version = "=1.26.0", features = ["serde", "v4"] }
@@ -34,7 +32,7 @@ tokio = { version = "1.50.0", features = [
   "sync",
   "time",
 ] }
-egui-phosphor = { version = "0.13.0" }
+egui-phosphor = { version = "0.14.0" }
 single-instance = { version = "0.3.3" }
 # not used until local playback is good to go, just complicates third party notices till then
 # rodio = { version = "0.22.2" }
