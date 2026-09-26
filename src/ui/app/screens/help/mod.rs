@@ -87,41 +87,45 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
             });
         }
         HelpCategory::PhysicalMic => {
-            help_section(
-                ui,
-                "",
-                "You can pick any physical microphone connected to your machine to let AudioPass route audio input from it through the virtual microphone.\n\n\
-                It'd be the same as using the selected physical mic without AudioPass running. \
-                This mode exists just to make it easier to switch between your physical mic and other modes without having to quit the app.",
-            );
+            egui::ScrollArea::vertical().id_salt("general_help").auto_shrink([false, false]).show(ui, |ui| {
+                help_section(
+                    ui,
+                    "",
+                    "You can pick any physical microphone connected to your machine to let AudioPass route audio input from it through the virtual microphone.\n\n\
+                     It'd be the same as using the selected physical mic without AudioPass running. \
+                     This mode exists just to make it easier to switch between your physical mic and other modes without having to quit the app.",
+                )
+            });
         }
         HelpCategory::ApplicationAudio => {
-            help_section(
-                ui,
-                "",
-                "This mode lets you pick a locally running application that plays audio, to route its audio output through the virtual microphone.\n\n\
+            egui::ScrollArea::vertical().id_salt("general_help").auto_shrink([false, false]).show(ui, |ui| {
+                help_section(
+                    ui,
+                    "",
+                    "This mode lets you pick a locally running application that plays audio, to route its audio output through the virtual microphone.\n\n\
                 This includes local music players, desktop clients for music streaming services, browser tabs, etc.",
-            );
-            help_section(
-                ui,
-                "THE DROPDOWN DOESN'T CONTAIN THE APP I WANT TO SELECT",
-                "AudioPass generates the list of audio-playing apps to pick from by querying PipeWire. \
+                );
+                help_section(
+                    ui,
+                    "THE DROPDOWN DOESN'T CONTAIN THE APP I WANT TO SELECT",
+                    "AudioPass generates the list of audio-playing apps to pick from by querying PipeWire. \
                 Sometimes PipeWire only detects an app as \"playing audio\" if the app has played audio at least once.\n\n\
                 In other words, if you can't see the app you wish to select in the dropdown, \
                 try playing some audio from your app for a moment or two to let PipeWire create a node for the app's audio output. \
                 The app should then show up in the dropdown for you to select.",
-            );
-            help_section(
-                ui,
-                "FIREFOX TABS SHOW UP IN THE DROPDOWN BUT DON'T HAVE THE RIGHT NAMES",
-                "Individual tabs show up separately in the dropdown, but sometimes they're labeled as \"AudioStream\" instead of having the right tab name.\n\n\
+                );
+                help_section(
+                    ui,
+                    "FIREFOX: TABS SHOW UP IN THE DROPDOWN WITH WRONG NAMES, PLAYBACK DISCONNECTS WHEN I PAUSE/SEEK, ETC.",
+                    "Individual tabs show up separately in the dropdown, but sometimes they're labeled as \"AudioStream\" instead of having the right tab name.\n\n\
                 This is a known issue with Firefox on PipeWire systems (for example: https://bugzilla.mozilla.org/show_bug.cgi?id=1847824). \
                 Can happen when you mute a tab for a while, when you re-open a closed tab that was playing audio, and so on.\n\n\
                 Another potential issue in case of multiple tabs is that switching between them will still play audio from only one tab, \
                 because the app is designed to target the first tab it can find in the PipeWire registry by node name. \
                 This is a limitation, the only workaround right now is to have no more than one audio-playing tab active at a time.\n\n\
-                Firefox also tends to frequently destroy and re-create streams whenever you seek playback, pause playback, etc.",
-            );
+                Firefox also tends to frequently destroy and re-create streams whenever you seek playback, pause playback, etc. which causes AudioPass to lose track of them.",
+                );
+            });
         }
         HelpCategory::LocalFile => {
             // TODO-file-playback: when file playback is ready

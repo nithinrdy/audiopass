@@ -3,6 +3,25 @@ use eframe::egui::{self, Align, FontId, RichText, Stroke, TextFormat};
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
     let mut selected_node = None;
+
+    if app.console_state.app_sources.len() == 0 {
+        egui::Frame::new().inner_margin(50.0).show(ui, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                ui.label(RichText::new("No audio-playing applications were detected.").color(style::WARNING).size(20.0));
+                ui.add_space(8.0);
+                ui.label(
+                    RichText::new(
+                        "If AudioPass is failing to detect an application, try playing audio from it for a moment to let PipeWire create a node for the app. \
+                        This will let AudioPass detect the application.",
+                    )
+                    .color(style::SECONDARY_TEXT)
+                    .size(16.0),
+                );
+            });
+        });
+        return;
+    }
+
     ui.horizontal(|ui| {
         ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::NONE;
         ui.label(RichText::new("Selected Application").size(16.0));

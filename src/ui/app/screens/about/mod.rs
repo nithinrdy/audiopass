@@ -2,7 +2,10 @@ use eframe::egui::{self, Button, RichText};
 
 use crate::ui::{self, app::types::state::LegalDoc, style};
 
-const EXTERNAL_LINKS: [(&str, &str); 2] = [("Homepage", "https://audiopass.nithinrdy.com"), ("Source Code", "https://github.com/nithinrdy/audiopass")];
+const EXTERNAL_LINKS: [(&str, &str, &str); 2] = [
+    ("Homepage", "https://audiopass.nithinrdy.com", egui_phosphor::regular::GLOBE),
+    ("Check out AudioPass on", "https://github.com/nithinrdy/audiopass", egui_phosphor::regular::GITHUB_LOGO),
+];
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
     ui.label(RichText::new(format!("AudioPass {}", env!("CARGO_PKG_VERSION"))).color(style::PRIMARY_TEXT).size(16.0));
@@ -12,10 +15,10 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         let button_width = (ui.available_width() / 2.0) - 5.0;
 
-        for (label, url) in EXTERNAL_LINKS {
+        for (label, url, icon) in EXTERNAL_LINKS {
             if ui
                 .add(
-                    Button::new(RichText::new(format!("{}  {}", label, egui_phosphor::regular::ARROW_SQUARE_OUT)).color(style::PRIMARY_TEXT).size(16.0))
+                    Button::new(RichText::new(format!("{}  {}", label, icon)).color(style::PRIMARY_TEXT).size(16.0))
                         .fill(style::SECONDARY_BACKGROUND)
                         .min_size(egui::vec2(button_width, 40.0)),
                 )

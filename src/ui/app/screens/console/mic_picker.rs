@@ -4,6 +4,22 @@ use crate::ui::{self, style};
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
     let mut selected_node = None;
+
+    if app.console_state.physical_sources.len() == 0 {
+        egui::Frame::new().inner_margin(50.0).show(ui, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                ui.label(RichText::new("No physical microphones were detected.").color(style::WARNING).size(20.0));
+                ui.add_space(8.0);
+                ui.label(
+                    RichText::new("Try reconnecting your mic(s) and ensure it/they can be seen in the system sound settings.")
+                        .color(style::SECONDARY_TEXT)
+                        .size(16.0),
+                );
+            });
+        });
+        return;
+    }
+
     ui.label(RichText::new("Selected Physical Mic").size(16.0));
     ui.add_space(2.0);
     ui.horizontal(|ui| {
