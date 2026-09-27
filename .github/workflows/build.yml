@@ -3,25 +3,20 @@ name: Build and draft release on tag creation
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build AudioPass
+  build_x64:
+    name: Build (x64)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    permissions:
-      contents: write
+    timeout-minutes: 15
 
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
-
-      - name: Print glibc version
-        run: ldd --version
 
       - name: Install build dependencies
         run: |
@@ -37,13 +32,69 @@ jobs:
           cp target/release/audiopass LICENSE THIRD_PARTY PRIVACY package/
           cp -aT meta/ package/
           chmod +x package/audiopass package/install.sh package/uninstall.sh
-          tar -czf audiopass.tar.gz -C package .
+          tar -czf audiopass-x64.tar.gz -C package .
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: audiopass-x64
+          path: audiopass-x64.tar.gz
+
+  build_arm:
+    name: Build (arm)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libpipewire-0.3-dev libasound2-dev
+
+      - name: Build AudioPass
+        run: cargo build --release --locked
+
+      - name: Create package
+        run: |
+          mkdir package
+          cp target/release/audiopass LICENSE THIRD_PARTY PRIVACY package/
+          cp -aT meta/ package/
+          chmod +x package/audiopass package/install.sh package/uninstall.sh
+          tar -czf audiopass-arm.tar.gz -C package .
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: audiopass-arm
+          path: audiopass-arm.tar.gz
+
+  release:
+    name: Create draft release
+    needs: [build_x64, build_arm]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Download packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: audiopass-*
+          path: packages
+          merge-multiple: true
 
       - name: Create draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" audiopass.tar.gz \
+          gh release create "$GITHUB_REF_NAME" packages/audiopass-x64.tar.gz packages/audiopass-arm.tar.gz \
             --draft \
             --fail-on-no-commits \
             --title "$GITHUB_REF_NAME" \
