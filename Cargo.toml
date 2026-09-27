@@ -1,6 +1,6 @@
 [package]
 name = "audiopass"
-version = "0.1.0"
+version = "0.1.1"
 description = "AudioPass is a Linux desktop app that plays local audio through a virtual microphone."
 license = "MIT"
 authors = ["Vishnu Nithin Reddy"]

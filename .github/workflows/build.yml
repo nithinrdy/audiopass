@@ -37,8 +37,8 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: audiopass-x64
           path: audiopass-x64.tar.gz
+          archive: false
 
   build_arm:
     name: Build (arm)
@@ -68,8 +68,8 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: audiopass-arm
           path: audiopass-arm.tar.gz
+          archive: false
 
   release:
     name: Create draft release

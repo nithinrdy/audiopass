@@ -1,4 +1,4 @@
-AudioPass v0.1.0
+AudioPass v0.1.1
 
 See https://github.com/nithinrdy/audiopass for more information (to leave feedback, report bugs, find newer versions, etc.)
 
