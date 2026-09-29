@@ -39,6 +39,7 @@ jobs:
         with:
           path: audiopass-x64.tar.gz
           archive: false
+          retention-days: 1
 
   build_arm:
     name: Build (arm)
@@ -70,6 +71,7 @@ jobs:
         with:
           path: audiopass-arm.tar.gz
           archive: false
+          retention-days: 1
 
   release:
     name: Create draft release

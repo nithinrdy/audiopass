@@ -2,8 +2,8 @@
 
 AudioPass is a Linux desktop app that plays local audio through a virtual microphone. It interfaces with the system's PipeWire service to create a virtual microphone and route audio through it. The following audio sources are supported:
 
-- any connected physical microphone (equivalent to not using AudioPass),
-- any locally running application playing audio
+- any connected physical microphone (equivalent to not using AudioPass, exists only so you don't have to quit the app every time you wish to use a physical mic),
+- any locally running application playing audio (local music players, browser tabs, Spotify, etc.)
 - _[work-in-progress]_ any local audio files
 
 <img width="2220" height="1756" alt="audiopass-screenshot" src="https://github.com/user-attachments/assets/dc6ea65f-e8cf-40fa-ad57-8164cd32f74c" />
