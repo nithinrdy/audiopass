@@ -96,6 +96,20 @@ impl VirtualMic {
                     data.audio_consumer.clear();
                 }
                 // mostly this on_process() example: https://docs.pipewire.org/audio-src_8c-example.html
+                // obviously most of the example is unavoidable boilerplate and, excluding that, the code is far from
+                // similar (not even the same language), but I wouldn't have gotten anywhere without the example,
+                // so including the copyright notice header on account of "adapting" the code:
+
+                /* PipeWire */
+                /* SPDX-FileCopyrightText: Copyright © 2018 Wim Taymans */
+                /* SPDX-License-Identifier: MIT */
+
+                /*
+                [title]
+                Audio source using \ref pw_stream "pw_stream".
+                [title]
+                */
+
                 // buffer, data_in_buffer, data_in_buffer.data() stucture: https://docs.pipewire.org/page_spa_buffer.html
                 let Some(mut buffer) = stream.dequeue_buffer() else {
                     return;

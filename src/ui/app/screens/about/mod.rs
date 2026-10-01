@@ -4,7 +4,7 @@ use crate::ui::{self, app::types::state::LegalDoc, style};
 
 const EXTERNAL_LINKS: [(&str, &str, &str); 2] = [
     ("Homepage", "https://audiopass.nithinrdy.com", egui_phosphor::regular::GLOBE),
-    ("Check out AudioPass on", "https://github.com/nithinrdy/audiopass", egui_phosphor::regular::GITHUB_LOGO),
+    ("View source on", "https://github.com/nithinrdy/audiopass", egui_phosphor::regular::GITHUB_LOGO),
 ];
 
 pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
@@ -13,7 +13,7 @@ pub fn show(app: &mut ui::App, ui: &mut egui::Ui) {
 
     ui.add_space(4.0);
     ui.horizontal(|ui| {
-        let button_width = (ui.available_width() / 2.0) - 5.0;
+        let button_width = (ui.available_width() / EXTERNAL_LINKS.len() as f32) - 5.0;
 
         for (label, url, icon) in EXTERNAL_LINKS {
             if ui

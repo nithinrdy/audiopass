@@ -1,3 +1,14 @@
+// Partly based on this example: https://sources.debian.org/src/rust-pipewire/0.9.2-2/examples/audio-capture.rs/#L162 (I honestly do not understand the serialize part).
+// corresponding copyright notice header:
+
+// Copyright The pipewire-rs Contributors.
+// SPDX-License-Identifier: MIT
+
+//! This file is a rustic interpretation of the [PipeWire audio-capture.c example][example]
+//!
+//! example: https://docs.pipewire.org/audio-capture_8c-example.html
+
+
 use pipewire::spa::{
     self,
     param::audio::{AudioFormat, AudioInfoRaw},
@@ -7,7 +18,6 @@ use std::io::Cursor;
 
 use crate::backend::constants;
 
-// Partly based on this example: https://sources.debian.org/src/rust-pipewire/0.9.2-2/examples/audio-capture.rs/#L162 (I honestly do not understand the serialize part).
 pub fn get_serialized_vec_for_pod() -> Result<Vec<u8>, String> {
     let mut audio_info = AudioInfoRaw::default();
     audio_info.set_format(AudioFormat::F32LE);
